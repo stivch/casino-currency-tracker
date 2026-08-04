@@ -221,7 +221,49 @@ console.log('\n-- Stake: a game round');
 
   check('a hyphenated game reads as the table names it', gameName('dragon-tower'), 'Dragon Tower');
   check('a single word', gameName('limbo'), 'Limbo');
+  check('a slots name is camelCase, not hyphenated', gameName('slotsTomeOfLife'), 'Slots Tome Of Life');
+  check('digits do not split a word', gameName('keno2'), 'Keno2');
   check('nothing is nothing', gameName(undefined), '');
+}
+
+console.log('\n-- Stake: a slots spin, at a real stake');
+{
+  // Captured from stake.com. Three things no earlier capture had: a game that
+  // settles on the bet itself, a stake that is not zero, and Stake's own
+  // slots naming.
+  const SPIN = {
+    id: 'c726c31f-bd0a-4e98-9826-6290aaef7e3a',
+    active: false,
+    currency: 'usdt',
+    amountMultiplier: 1,
+    payoutMultiplier: 0,
+    amount: 0.00042962,
+    payout: 0,
+    game: 'slotsTomeOfLife',
+  };
+
+  const { rows, currency, mismatch } = betsFromStakeGame(SPIN);
+  check('a single-shot game settles on the bet', rows[0].settled, true);
+  check('the stake is carried at full precision', rows[0].amount, 0.00042962);
+  check('a losing spin returns nothing', rows[0].payout, 0);
+  check('the coin comes off the spin', currency, 'USDT');
+  check('and it is filed under Stake’s own name for it', rows[0].game, 'Slots Tome Of Life');
+
+  // The evidence this capture actually carried: at a real stake, a loss
+  // reports payout 0 rather than −0.00042962. A net figure would have been
+  // negative, so `payout` is what came back, not what was made.
+  check('Stake’s own payout agrees with stake times multiplier', mismatch, null);
+
+  let s = ingest(emptySession(null, 1000), rows, { currency }).session;
+  check('one spin is one bet', s.bets, 1);
+  check('turnover is the stake', s.wagered, 0.00042962);
+  check('and the spin lost it', sessionProfit(s), -0.00042962);
+  check('counted as a loss', [s.wins, s.losses], [0, 1]);
+
+  // Re-reading it — the table showing the same spin a moment later — must not
+  // count it twice.
+  s = ingest(s, rows, { currency }).session;
+  check('and it is only counted once', s.bets, 1);
 }
 
 console.log('\n-- Stake: a whole mines round');

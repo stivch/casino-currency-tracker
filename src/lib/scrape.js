@@ -349,13 +349,18 @@
   // handles for a table row that settles late.
 
   /**
-   * Stake names its games in the URL form: "mines", "dragon-tower". The bet
-   * table renders them as "Mines" and "Dragon Tower", and both sources feed
-   * the same per-game totals — so they are made to agree here rather than
-   * producing two rows for one game.
+   * Stake names its games three ways in the same field: "mines",
+   * "dragon-tower", and — for its slots — "slotsTomeOfLife". All three end up
+   * in the per-game totals beside names the bet table rendered, so they are
+   * made to read alike here rather than as one row per spelling.
+   *
+   * The slots prefix is left on. It is Stake's own name for the game and
+   * dropping it would be this file deciding what a game is really called,
+   * which is a guess with nothing to check it against.
    */
   function gameName(raw) {
     return String(raw || '')
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
       .split(/[-_\s]+/)
       .filter(Boolean)
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -366,15 +371,18 @@
    * One round, as a bet row.
    *
    * The return is computed as stake times `payoutMultiplier` rather than taken
-   * from the reply's own `payout`. Both were zero in every capture this was
-   * written against — they were zero-stake rounds — so whether `payout` is the
-   * gross return or the net profit is genuinely unknown, and a field whose
-   * meaning is unknown is not one to do arithmetic with. The multiplier is
-   * unambiguous: 1.125 on a mines cashout is the total returned per unit
-   * staked, and 0 when the round is lost.
+   * from the reply's own `payout`, because what `payout` means was unknown
+   * when this was written: every capture was zero-stake, where the gross
+   * return and the net profit are both zero and agree with everything.
    *
-   * `payout` is still compared against it, and a disagreement is reported, so
-   * the first real-money round settles the question by itself.
+   * A losing slots spin at a real stake has since narrowed it — 0.00042962
+   * staked, `payout` 0. A net figure would have been −0.00042962 there, so
+   * `payout` is what came back rather than what was made. That still leaves a
+   * win unconfirmed, and the multiplier needs no confirming: 1.125 on a mines
+   * cashout is the total returned per unit staked, and 0 on a bust.
+   *
+   * `payout` is still compared against the computed figure and a disagreement
+   * is reported, so a winning round settles the last of it by itself.
    *
    * @returns {{rows: Array, currency: string|null, mismatch: object|null}}
    */
