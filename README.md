@@ -324,6 +324,24 @@ the machine.
 
 *Export years* writes the table below it: one row per tax year.
 
+### Backup
+
+The CSV exports are for reading elsewhere; they are not a restore path. *Export backup* writes
+the one file that is — a JSON copy of your settings and every recorded session. **The API key is
+deliberately not in it**: a credential does not belong in a file that ends up in a downloads
+folder or a cloud drive.
+
+Everything this extension knows lives in the browser's own storage on one machine, so
+uninstalling it, resetting the profile, or moving to a new computer takes the history with it.
+There is no server holding a copy, by design — which makes the backup the only copy there is.
+
+*Import backup* **merges rather than replaces.** Sessions already recorded are kept, and a
+session already present is skipped rather than doubled — identity is its start, its end and its
+coin, which no two genuinely different sessions share. So restoring last month's file cannot
+delete this month's play. Entries that do not survive validation are dropped and counted, and
+imported settings go through the same sanitising every typed field does: a hand-edited file earns
+the same distrust as a hand-typed number.
+
 ### By year
 
 Options → *By year* totals every recorded session in your currency **at the rate it closed
@@ -359,6 +377,18 @@ Right-click the toolbar icon → Options, or *All settings* in the popup.
 | Tax year starts in | Which month the *By year* report buckets on. January by default. |
 | Toolbar badge | Session P/L on the icon, or the rate when no session is running. |
 | Notify when a limit is crossed | Desktop notice, once per limit per session. |
+| Alert when the rate rises above / falls below | Desktop notice when the rate crosses a line you set. Blank = off. |
+
+### Rate alerts
+
+Two thresholds, in your currency per USDT. A notice fires **on the crossing**, not while the
+condition holds — a rate that sits above your line all afternoon is one notice, not one every
+minute. It re-arms when the rate crosses back, so a figure oscillating around your threshold
+tells you each time it genuinely moves through it.
+
+Both compare the *effective* rate, after your off-ramp spread, so the alert agrees with the
+number on the badge rather than with a mid-price you would never actually receive. Changing your
+target currency converts the thresholds along with the money limits, at the same cross-rate.
 
 ### Language
 
