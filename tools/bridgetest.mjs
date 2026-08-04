@@ -432,6 +432,49 @@ console.log('\n-- Stake: rounds seen going past');
   check('nothing is read with tracking off', page.kindsOf('round'), []);
 }
 
+console.log('\n-- a game this cannot read says so');
+{
+  // The point of the whole exercise: a game whose replies do not parse is a
+  // game whose bets are not being counted, and that has to be visible. Right
+  // now the only games with captured replies are the ones this was written
+  // against — every other Stake original is an assumption until it is played.
+  const page = loadBridge('stake.com', {
+    // A round-shaped reply that fails the type checks: no id.
+    '/_api/casino/dragon-tower/bet': { dragonTowerBet: { active: true, game: 'dragon-tower', amount: 1, payoutMultiplier: 0 } },
+    // Not a round at all — a list, a config blob. Must stay silent.
+    '/_api/casino/games/list': { games: [{ name: 'mines' }, { name: 'dice' }] },
+    // A readable one, to show a good round raises nothing.
+    '/_api/casino/dice/bet': { diceBet: { id: 'd1', active: false, game: 'dice', currency: 'usdt', amount: 1, payoutMultiplier: 2 } },
+  });
+
+  page.sendIn({ kind: 'config', site: 'stake', capture: false, rates: false, bets: true, poll: false });
+
+  await page.pageFetch('/_api/casino/games/list', { body: '{}' });
+  await page.settle();
+  check('a casino reply that is not a round is not complained about', page.kindsOf('problem'), []);
+
+  await page.pageFetch('/_api/casino/dice/bet', { body: '{}' });
+  await page.settle();
+  check('a round that reads raises nothing', page.kindsOf('problem'), []);
+  check('and is forwarded', page.kindsOf('round').length, 1);
+
+  // A single-shot game settles on the bet itself, which is the case no
+  // capture covers yet.
+  check('a single-shot game arrives settled', page.kindsOf('round')[0].round.active, false);
+
+  await page.pageFetch('/_api/casino/dragon-tower/bet', { body: '{}' });
+  await page.settle();
+
+  const problems = page.kindsOf('problem');
+  check('but a round-shaped reply that will not parse does', problems.length, 1);
+  check('naming the game, so it can be found', problems[0].message.includes('dragon-tower'), true);
+  check('and saying it is not being counted', problems[0].message.includes('not being counted'), true);
+
+  // The reply is what identifies the failure, and it is exactly what must not
+  // be kept: it carries the player and the board.
+  check('no part of the reply is forwarded with it', problems[0].message.includes('payoutMultiplier'), false);
+}
+
 console.log('\n-- nothing replays a casino action');
 {
   // Stake's games are driven by REST endpoints — /_api/casino/mines/bet places

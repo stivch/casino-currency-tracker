@@ -1401,6 +1401,15 @@
       return;
     }
 
+    // Ahead of the account gate, because the bridge complains about the bet
+    // ledger too. Behind it, a game whose rounds cannot be read would only
+    // ever be reported to somebody who had switched on rakeback tracking —
+    // which is off by default, so in practice to nobody.
+    if (event.data.kind === 'problem') {
+      send({ type: 'contentError', where: 'stake api', message: String(event.data.message).slice(0, 300) });
+      return;
+    }
+
     if (!settings?.trackRakeback) return;
 
     if (event.data.kind === 'meta') {
@@ -1412,8 +1421,6 @@
       clearAccountBusy();
       accountNote = event.data.ok ? null : String(event.data.message || 'refresh failed').slice(0, 160);
       renderAccount();
-    } else if (event.data.kind === 'problem') {
-      send({ type: 'contentError', where: 'stake api', message: String(event.data.message).slice(0, 300) });
     }
   });
 

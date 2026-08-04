@@ -178,9 +178,40 @@
      * the extension's business, and this bus is readable by every script on
      * the page, so the narrowing happens here rather than after broadcasting.
      */
-    function harvestRound(json) {
+    /** The game a casino path belongs to: /_api/casino/mines/bet -> "mines". */
+    function gameFromPath(url) {
+      const match = /\/_api\/casino\/([^/?#]+)/.exec(String(url || ''));
+      return match ? match[1] : '';
+    }
+
+    /**
+     * Did this reply look like a round we simply could not read?
+     *
+     * Only a near miss is worth reporting. Something under /_api/casino/ that
+     * carries no `game` at all is a game list or a config blob, not a round —
+     * complaining about those would bury the one case that matters under
+     * noise. A payload that names a game and still will not parse is a game
+     * this extension is not counting, which is exactly the silent failure the
+     * whole ledger design exists to avoid.
+     */
+    function looksLikeRound(json) {
+      for (const value of Object.values(json || {})) {
+        if (value && typeof value === 'object' && typeof value.game === 'string' && value.game) return true;
+      }
+      return false;
+    }
+
+    function harvestRound(json, url) {
       const round = roundOf(json);
-      if (!round) return;
+      if (!round) {
+        if (looksLikeRound(json)) {
+          const game = gameFromPath(url);
+          post('problem', {
+            message: `${game || 'a game'}: a round went past that this could not read, so it is not being counted.`,
+          });
+        }
+        return;
+      }
 
       post('round', {
         round: {
@@ -268,11 +299,11 @@
       },
 
       /** Read a reply the inspector marked as interesting. */
-      absorb(what, json, wants) {
+      absorb(what, json, wants, url) {
         // A game reply is nothing like a GraphQL one, so it is routed by what
         // the inspector decided rather than tried against both readers.
         if (what === 'round') {
-          if (wants.bets) harvestRound(json);
+          if (wants.bets) harvestRound(json, url);
           return;
         }
         if (wants.account) harvest(json);
@@ -585,7 +616,7 @@
       try {
         response.clone().json().then((json) => {
           try {
-            SITE.absorb(what, json, wants);
+            SITE.absorb(what, json, wants, url);
           } catch (error) {
             post('problem', { message: `reading ${what}: ${String(error?.message || error).slice(0, 100)}` });
           }
