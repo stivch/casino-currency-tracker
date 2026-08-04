@@ -15,7 +15,7 @@
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { findMyBetsTable, scrapeBets, parseCell, siteFor, betsFromDuel } = require('../src/lib/scrape.js');
+const { findMyBetsTable, scrapeBets, parseCell, siteFor, betsFromDuel, DUEL_HOSTS } = require('../src/lib/scrape.js');
 
 let failures = 0;
 
@@ -148,6 +148,39 @@ console.log('\n-- which site');
 
   check('Stake reads its ledger off a table', siteFor('stake.com')?.ledger, 'table');
   check('Duel reads its ledger off an API', siteFor('duel.com')?.ledger, 'api');
+
+  // Duel's other domains. These are the ones that fail quietly: an unmatched
+  // Duel host falls through to the Stake adapter, which then watches for a bet
+  // table that does not exist and reports no fault at all.
+  for (const host of ['duel.limited', 'duel.vip', 'duel.net', 'www.duel.limited']) {
+    check(`${host} is Duel`, siteFor(host)?.id, 'duel');
+  }
+  check('a duel lookalike TLD is still not Duel', siteFor('duel.limited.evil.net'), null);
+  check('an unrelated duel TLD is not Duel', siteFor('duel.example'), null);
+}
+
+console.log('\n-- the two host lists agree');
+{
+  // lib/stakebridge.js runs in the page's own world, so it cannot import
+  // siteFor and carries its own copy of the Duel pattern. If the two drift, a
+  // mirror is Duel to one layer and Stake to the other: the overlay reads one
+  // site's ledger while the bridge polls the other's API. Nothing about that
+  // announces itself, so it is asserted here.
+  const { readFileSync } = await import('node:fs');
+  const bridge = readFileSync(new URL('../src/lib/stakebridge.js', import.meta.url), 'utf8');
+
+  const found = bridge.match(/const DUEL_HOSTS = (\/.*\/i?);/);
+  check('the bridge still declares a Duel host pattern', Boolean(found), true);
+
+  if (found) {
+    // Compared by what they match rather than by source text, so a harmless
+    // difference in flags or spacing does not fail and a real difference does.
+    const bridgeRe = eval(found[1]); // eslint-disable-line no-eval -- our own source, read from disk
+    const hosts = ['duel.com', 'www.duel.com', 'duel.limited', 'duel.vip', 'duel.net',
+      'stake.com', 'www.stake.bet', 'notduel.com', 'duel.com.evil.net', 'example.com'];
+    check('both layers agree on every host',
+      hosts.filter((h) => bridgeRe.test(h) !== DUEL_HOSTS.test(h)), []);
+  }
 }
 
 console.log('\n-- Duel: a round is not a row');

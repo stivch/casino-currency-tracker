@@ -48,7 +48,13 @@
         "https://stake.us/*",
         "https://*.stake.us/*",
         "https://duel.com/*",
-        "https://*.duel.com/*"
+        "https://*.duel.com/*",
+        "https://duel.limited/*",
+        "https://*.duel.limited/*",
+        "https://duel.vip/*",
+        "https://*.duel.vip/*",
+        "https://duel.net/*",
+        "https://*.duel.net/*"
       ],
       "js": ["src/lib/stakebridge.js"],
       "world": "MAIN",
@@ -66,7 +72,13 @@
         "https://stake.us/*",
         "https://*.stake.us/*",
         "https://duel.com/*",
-        "https://*.duel.com/*"
+        "https://*.duel.com/*",
+        "https://duel.limited/*",
+        "https://*.duel.limited/*",
+        "https://duel.vip/*",
+        "https://*.duel.vip/*",
+        "https://duel.net/*",
+        "https://*.duel.net/*"
       ],
       "js": ["src/lib/scrape.js", "src/content.js"],
       "run_at": "document_idle",

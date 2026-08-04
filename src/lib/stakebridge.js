@@ -168,23 +168,29 @@
       inspect({ url, input, init, body, wants }) {
         if (!url.includes(ENDPOINT)) return null;
 
+        // Only a string body can be read without consuming the request. Stake
+        // sends one; anything else is left alone rather than risk breaking the
+        // app's own call to read it.
+        if (!body) return null;
+
         // Headers are kept only for the account operations, because those are
         // the only ones ever replayed. Reading the price table asks for
         // nothing, so switching it on never puts an access token in this
         // closure.
-        if (wants.account) {
+        //
+        // The operation check comes first deliberately. Capturing on any
+        // request to this endpoint would put a token in reach of a page that
+        // merely has a matching URL in it, and it buys nothing: a replay needs
+        // the operation's own body, which is only ever recorded here, so
+        // headers taken without one could never be used.
+        if (wants.account && OPERATIONS.some((name) => body.includes(name))) {
           try {
             remember(input, init, body);
           } catch {
             // Never let bookkeeping break the page's request.
           }
+          return 'account';
         }
-
-        // Only a string body can be read without consuming the request. Stake
-        // sends one; anything else is left alone rather than risk breaking the
-        // app's own call to read it.
-        if (!body) return null;
-        if (wants.account && OPERATIONS.some((name) => body.includes(name))) return 'account';
         if (wants.rates && body.includes(RATE_OPERATION)) return 'rates';
         return null;
       },
@@ -449,7 +455,15 @@
 
   // ========================================================= the wrap
 
-  const SITE = /(^|\.)duel\.com$/i.test(window.location.hostname) ? DUEL : STAKE;
+  // Which adapter this page gets. Mirrors are named here in full rather than
+  // matched loosely: an unrecognised Duel host falls to STAKE, whose readers
+  // then find nothing and report no fault, which is the quietest way this can
+  // fail. The same list lives in siteFor() in lib/scrape.js — this script runs
+  // in the page's world and can read neither that file nor the extension, so
+  // the copy is forced; tools/domtest.mjs checks the two agree.
+  const DUEL_HOSTS = /(^|\.)duel\.(com|limited|vip|net)$/i;
+
+  const SITE = DUEL_HOSTS.test(window.location.hostname) ? DUEL : STAKE;
 
   const wants = { account: false, rates: false, bets: false };
   let accountTimer = null;

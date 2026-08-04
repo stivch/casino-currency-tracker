@@ -45,11 +45,24 @@
     },
   };
 
+  /**
+   * Hostnames each casino answers on, mirrors included.
+   *
+   * Duplicated once, at the bottom of lib/stakebridge.js, and that copy cannot
+   * be avoided: the bridge runs in the page's world as a plain script, so it
+   * can neither import this nor read it off the extension. Both copies are
+   * exercised by tools/domtest.mjs, which is what keeps them from drifting —
+   * a Duel mirror that only one of them recognises is read as Stake by the
+   * other, and Stake's readers find nothing on it while reporting no fault.
+   */
+  const DUEL_HOSTS = /(^|\.)duel\.(com|limited|vip|net)$/;
+  const STAKE_HOSTS = /(^|\.)stake\.(com|bet|games|us)$/;
+
   /** Which casino a hostname is, or null for anywhere else. */
   function siteFor(hostname) {
     const host = String(hostname || '').toLowerCase();
-    if (/(^|\.)duel\.com$/.test(host)) return SITES.duel;
-    if (/(^|\.)stake\.(com|bet|games|us)$/.test(host)) return SITES.stake;
+    if (DUEL_HOSTS.test(host)) return SITES.duel;
+    if (STAKE_HOSTS.test(host)) return SITES.stake;
     return null;
   }
 
@@ -311,7 +324,8 @@
 
   const API = {
     MY_BETS_HEADERS, parseCell, findMyBetsTable, scrapeBets,
-    SITES, siteFor, DUEL_CURRENCIES, DUEL_BET_KEY_RE, duelSettled, betsFromDuel,
+    SITES, siteFor, DUEL_HOSTS, STAKE_HOSTS,
+    DUEL_CURRENCIES, DUEL_BET_KEY_RE, duelSettled, betsFromDuel,
   };
 
   // In the page: a global in the content script's isolated world, read by
