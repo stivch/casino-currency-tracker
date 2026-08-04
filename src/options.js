@@ -650,9 +650,10 @@ for (const id of LIMITS) {
     // A value that does not survive sanitising is cleared to null, and render()
     // then draws the field blank. Saying "Saved." on top of that is how a
     // rejected limit came to look like one that simply refused to stick.
+    const noun = id.startsWith('alert') ? 'a rate alert' : 'a limit';
     status(raw === '' || Number.isFinite(state.settings[id])
-      ? 'Saved.'
-      : `“${raw}” is not a limit — needs a number above zero. Left off.`);
+      ? t('statusSaved', 'Saved.')
+      : `“${raw}” is not ${noun} — needs a number above zero. Left off.`);
   });
 }
 
