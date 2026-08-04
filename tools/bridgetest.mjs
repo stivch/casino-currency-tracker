@@ -368,17 +368,36 @@ console.log('\n-- Stake: rounds seen going past');
     },
   };
 
+  // Opening a round. Its `state.rounds` is empty and there is no multiplier
+  // yet — the only thing that matters here is that it arrives marked open.
+  const MINES_BET = {
+    minesBet: {
+      ...MINES_ALIVE.minesNext,
+      id: '8f79732b-271b-4d86-9e28-1a5fe699801b',
+      state: { rounds: [], minesCount: 3, mines: null },
+    },
+  };
+
   const page = loadBridge('stake.com', {
+    '/_api/casino/mines/bet': MINES_BET,
     '/_api/casino/mines/next': MINES_ALIVE,
     '/_api/casino/mines/cashout': MINES_CASHOUT,
   });
 
   page.sendIn({ kind: 'config', site: 'stake', capture: false, rates: false, bets: true, poll: false });
 
+  await page.pageFetch('/_api/casino/mines/bet', { body: '{"currency":"usdt","amount":0,"minesCount":3}' });
+  await page.settle();
+
+  const opened = page.kindsOf('round');
+  check('placing a bet is forwarded as an open round', opened.length, 1);
+  check('marked open', opened[0].round.active, true);
+  check('and the wrapper key does not matter', opened[0].round.game, 'mines');
+
   await page.pageFetch('/_api/casino/mines/next', { body: '{"fields":[10]}' });
   await page.settle();
 
-  const rounds = page.kindsOf('round');
+  const rounds = page.kindsOf('round').slice(1);
   check('an open round is forwarded', rounds.length, 1);
   check('with the fields the accounting needs',
     Object.keys(rounds[0].round).sort(),
@@ -396,7 +415,7 @@ console.log('\n-- Stake: rounds seen going past');
   await page.pageFetch('/_api/casino/mines/cashout', { body: '{"identifier":"dVr9TVep8zVsrOj_ch3o2"}' });
   await page.settle();
 
-  const settled = page.kindsOf('round')[1];
+  const settled = page.kindsOf('round').at(-1);
   check('a cashout is forwarded as settled', settled.round.active, false);
   check('carrying its multiplier', settled.round.payoutMultiplier, 1.125);
 

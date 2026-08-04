@@ -13,6 +13,7 @@
 // needed tests ended up with none.
 
 import { createRequire } from 'node:module';
+import { emptySession, gamesOf, ingest, sessionProfit } from '../src/lib/session.js';
 
 const require = createRequire(import.meta.url);
 const { findMyBetsTable, scrapeBets, parseCell, siteFor, betsFromDuel, DUEL_HOSTS, betsFromStakeGame, gameName } = require('../src/lib/scrape.js');
@@ -221,6 +222,58 @@ console.log('\n-- Stake: a game round');
   check('a hyphenated game reads as the table names it', gameName('dragon-tower'), 'Dragon Tower');
   check('a single word', gameName('limbo'), 'Limbo');
   check('nothing is nothing', gameName(undefined), '');
+}
+
+console.log('\n-- Stake: a whole mines round');
+{
+  // The property the entire multi-step design rests on: one round is one bet,
+  // however many HTTP calls it takes. Count each call and turnover multiplies
+  // — which is exactly how Duel's two-line ledger read ten rounds worth +1.18
+  // as +28.67 before it was grouped.
+  //
+  // The stake is 8 here; every real capture was zero-stake, and a round worth
+  // nothing cannot show a doubled anything.
+  const OPENED = { // /bet, verbatim shape
+    id: '8f79732b-271b-4d86-9e28-1a5fe699801b',
+    active: true, currency: 'usdt', amountMultiplier: 1,
+    payoutMultiplier: 0, amount: 8, payout: 0, game: 'mines',
+  };
+  const REVEALED = { ...OPENED, payoutMultiplier: 0 }; // /next, still alive
+  const CASHED = { ...OPENED, active: false, payoutMultiplier: 1.125 };
+
+  const feed = (session, round) => {
+    const { rows, currency } = betsFromStakeGame(round);
+    return ingest(session, rows, { currency }).session;
+  };
+
+  let s = emptySession(null, 1000);
+  s = feed(s, OPENED);
+  check('opening a round books nothing', [s.bets, s.wagered, s.returned], [0, 0, 0]);
+
+  s = feed(s, REVEALED);
+  s = feed(s, REVEALED);
+  check('and neither does revealing tiles', [s.bets, s.wagered, s.returned], [0, 0, 0]);
+
+  s = feed(s, CASHED);
+  check('cashing out books exactly one bet', s.bets, 1);
+  check('with the stake charged once', s.wagered, 8);
+  check('and the gross returned once', s.returned, 9);
+  check('so the round is worth its profit', sessionProfit(s), 1);
+  check('the coin came off the round', s.currency, 'USDT');
+  check('filed under the game', gamesOf(s.games).map((g) => [g.game, g.bets]), [['Mines', 1]]);
+
+  // Replaying the whole round — a re-read, a second tab — must change nothing.
+  for (const round of [OPENED, REVEALED, CASHED]) s = feed(s, round);
+  check('replaying the round adds nothing', [s.bets, s.wagered, s.returned], [1, 8, 9]);
+
+  // The other ending.
+  let lost = emptySession(null, 1000);
+  lost = feed(lost, OPENED);
+  lost = feed(lost, { ...OPENED, active: false, payoutMultiplier: 0 });
+  check('a busted round is one bet too', lost.bets, 1);
+  check('losing the stake and returning nothing', [lost.wagered, lost.returned], [8, 0]);
+  check('which is a loss of the stake', sessionProfit(lost), -8);
+  check('counted as a loss, not a win', [lost.wins, lost.losses], [0, 1]);
 }
 
 console.log('\n-- switched-on domains');
