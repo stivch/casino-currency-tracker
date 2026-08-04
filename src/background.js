@@ -1091,7 +1091,17 @@ async function boot() {
   await refreshRate();
 }
 
-chrome.runtime.onInstalled.addListener(boot);
+chrome.runtime.onInstalled.addListener((details) => {
+  boot();
+  // Only on a genuine first install. An update — or a reload while developing —
+  // opening a tab every time would be a nuisance rather than an introduction.
+  //
+  // chrome.tabs.create needs no "tabs" permission: that permission gates
+  // *reading* a tab's url and title, which this extension still never asks for.
+  if (details?.reason === 'install') {
+    chrome.tabs?.create({ url: chrome.runtime.getURL('src/welcome.html') });
+  }
+});
 chrome.runtime.onStartup.addListener(boot);
 
 // Also on a plain wake, not only on install: a worker that is revived by a

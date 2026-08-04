@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Casino Currency Tracker — installed</title>
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body class="options">
+
+  <h1 data-i18n="welTitle">Installed</h1>
+  <p class="hint" data-i18n="welIntro">Open Stake or Duel and a small readout appears in the bottom-right corner. Everything
+    below is already configured — this page exists so that the two switches which change what the extension
+    requests are a decision you made rather than one you discover later.</p>
+
+  <h2 data-i18n="welPin">Pin the toolbar icon</h2>
+  <p class="hint" data-i18n="welPinSub">Click the puzzle-piece icon in Chrome's toolbar and pin this extension. The icon
+    carries the live rate, and your session profit or loss while you are playing — green up, red down — so it is worth
+    having visible.</p>
+
+  <h2 data-i18n="welPrivacy">What leaves your machine</h2>
+  <p class="hint" data-i18n="welPrivacySub">Rate lookups to CoinGecko and exchangerate-api, and nothing else. No account,
+    no analytics, no server of ours — there is nowhere for your data to go. History, settings and session figures stay in
+    the browser's own storage. The optional CoinGecko API key is kept on this machine only, is never synced, and is never
+    handed to the script that runs inside the casino's page.</p>
+
+  <h2 data-i18n="welSwitches">The two switches worth knowing about</h2>
+
+  <div class="group">
+    <div class="row">
+      <span class="grow"><span class="label" data-i18n="welTrack">Track session P/L — on</span>
+        <span class="sub" data-i18n="welTrackSub">Counts your bets from the site's own ledger. On Stake that ledger is the
+          “My Bets” table, already on the page, so it is only watched. Duel has no bet table, so its transaction feed is
+          read instead — that means a request every 15 seconds, but only while a Duel tab is open, visible and focused.
+          Turn this off in Options and nothing is requested on either site.</span></span>
+    </div>
+
+    <div class="row">
+      <span class="grow"><span class="label" data-i18n="welRakeback">Read rakeback and VIP progress — off</span>
+        <span class="sub" data-i18n="welRakebackSub">Reads account data the casino's own app already fetches. Watching
+          only, until you also turn on the poll beside it — that one repeats a request to the account API on a timer, from
+          your logged-in session. Casinos' terms restrict automated traffic, and the account that would be flagged is
+          yours. Off unless you decide otherwise.</span></span>
+    </div>
+  </div>
+
+  <h2 data-i18n="welLimits">Limits report, they do not intervene</h2>
+  <p class="hint" data-i18n="welLimitsSub">Wager, loss, win and time limits flag in the overlay and raise a desktop notice
+    when a session crosses one. Nothing is blocked and no bet is stopped — this extension only ever tells you where you
+    stand. The figures it produces are a floor, not an accounting record: the site's own history is authoritative, and
+    nothing here is tax or financial advice.</p>
+
+  <button class="wide" id="openOptions" data-i18n="welOpenOptions">Open settings</button>
+
+  <p class="credit">
+    <span data-i18n="creditPrices">Prices by</span>
+    <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a> ·
+    <span data-i18n="creditRates">exchange rates by</span>
+    <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">exchangerate-api.com</a>
+    <br>
+    <span data-i18n="creditLicence">MIT licensed, and provided as is with no warranty. It reports; it does not
+      intervene, and nothing here is tax or financial advice.</span>
+  </p>
+
+  <script type="module" src="welcome.js"></script>
+</body>
+</html>
