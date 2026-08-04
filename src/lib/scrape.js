@@ -1,0 +1,322 @@
+// Reading someone else's bet ledger — Stake's "My Bets" table, or Duel's
+// transaction feed.
+//
+// This is the riskiest code in the extension and it used to be the only code
+// with no test at all: it depends on someone else's markup, it is the source of
+// every number the session shows, and when it breaks it breaks quietly. The
+// only reason it lived inside content.js was that content scripts cannot be ES
+// modules — so it lives here instead, as a plain script that the manifest loads
+// ahead of content.js and that tools/domtest.mjs can require() against a fake
+// DOM. One copy, exercised by tests.
+//
+// Nothing in here touches chrome APIs or the network: give it a document-like
+// object or a parsed response and it will read it.
+
+(function (root) {
+  'use strict';
+
+  // ------------------------------------------------------------- which site
+  //
+  // The two supported casinos keep the same figures in completely different
+  // places, so which one this is decides where every reader looks. Everything
+  // site-specific in the extension is named here; nothing else branches on a
+  // hostname.
+
+  const SITES = {
+    stake: {
+      id: 'stake',
+      name: 'Stake',
+      // The ledger is markup: a table on the page, scraped as it re-renders.
+      ledger: 'table',
+      // The wallet chip, for reading which coin is in play.
+      currencyChip: 'button[data-testid="coin-toggle"], [data-testid="balance-toggle"]',
+    },
+    duel: {
+      id: 'duel',
+      name: 'Duel',
+      // The ledger is JSON: Duel has no bet table at all, and its transaction
+      // feed is a better source than one would have been — an exact stake, an
+      // exact payout and a unique id per row, with no markup in the way.
+      ledger: 'api',
+      // Duel labels its balance but not its coin: the header renders "$0.00"
+      // whatever the wallet holds. The coin therefore comes off the ledger
+      // rows, which carry it as a number, rather than off the chip.
+      currencyChip: '[data-testid="currency-value"]',
+    },
+  };
+
+  /** Which casino a hostname is, or null for anywhere else. */
+  function siteFor(hostname) {
+    const host = String(hostname || '').toLowerCase();
+    if (/(^|\.)duel\.com$/.test(host)) return SITES.duel;
+    if (/(^|\.)stake\.(com|bet|games|us)$/.test(host)) return SITES.stake;
+    return null;
+  }
+
+  /**
+   * The exact columns of the "My Bets" tab, in order. Matching on the full set
+   * rather than a substring is what keeps "All Bets" out: that table carries a
+   * user column, and counting strangers' bets as yours would be far worse than
+   * counting nothing at all.
+   */
+  const MY_BETS_HEADERS = ['game', 'time', 'bet amount', 'multiplier', 'payout'];
+
+  /** Columns that mark a table as somebody else's bets. */
+  const FOREIGN_HEADER_RE = /user|player|name/;
+
+  /** A signed decimal anywhere in a cell, grouped form first. */
+  const CELL_NUMBER_RE = /-?\d{1,3}(?:,\d{3})+(?:\.\d+)?|-?\d+\.?\d*|-?\.\d+/;
+
+  /**
+   * "0.20000000" -> 0.2, "1.13×" -> 1.13, "0.20000000 USDT" -> 0.2.
+   * Returns null when the cell holds no number at all.
+   *
+   * This used to demand that the *whole* cell be a bare number, which meant a
+   * stake rendered with its ticker beside it — or a currency symbol, or an
+   * icon carrying alt text — parsed as null. Null then became a zero stake and
+   * the bet was booked anyway: one bet, nothing wagered, no profit, filed as a
+   * loss because a zero payout is a loss. A whole winning session could read as
+   * flat that way. Find the number in the cell; do not insist on the cell being
+   * nothing but the number.
+   */
+  function parseCell(text) {
+    if (text === null || text === undefined) return null;
+
+    const match = String(text).match(CELL_NUMBER_RE);
+    if (!match) return null;
+
+    const value = Number.parseFloat(match[0].replace(/,/g, ''));
+    return Number.isFinite(value) ? value : null;
+  }
+
+  /** The user's own bet table on the page, or null. */
+  function findMyBetsTable(doc) {
+    const scope = doc || root.document;
+    if (!scope) return null;
+
+    for (const table of scope.querySelectorAll('table')) {
+      const heads = [...table.querySelectorAll('thead th')].map((th) => th.textContent.trim().toLowerCase());
+      if (heads.length !== MY_BETS_HEADERS.length) continue;
+      if (heads.some((h) => FOREIGN_HEADER_RE.test(h))) continue;
+      if (MY_BETS_HEADERS.every((h, i) => heads[i] === h)) return { table, heads };
+    }
+    return null;
+  }
+
+  /**
+   * Rows as {id, settled, game, amount, payout}, newest first — the order the
+   * table renders them in.
+   *
+   * A payout cell that is blank or not a number means the bet has not resolved:
+   * an unsettled sports bet, or a row caught mid-render. A *numeric* zero is
+   * deliberately not treated as pending — only Mines was ever confirmed to
+   * write losses as a negative, and calling 0.00000000 "pending" would silently
+   * drop every losing bet in whichever game writes them that way.
+   */
+  function scrapeBets(table, heads) {
+    const iGame = heads.indexOf('game');
+    const iAmount = heads.indexOf('bet amount');
+    const iPayout = heads.indexOf('payout');
+    const rows = [];
+
+    for (const tr of table.querySelectorAll('tbody tr')) {
+      const id = tr.getAttribute('data-test-id') || tr.getAttribute('data-testid');
+      if (!id) continue;
+
+      const payout = parseCell(tr.cells[iPayout]?.textContent ?? '');
+
+      rows.push({
+        id,
+        settled: payout !== null,
+        game: tr.cells[iGame]?.textContent.trim() || '',
+        amount: parseCell(tr.cells[iAmount]?.textContent),
+        payout,
+      });
+    }
+    return rows;
+  }
+
+  // ------------------------------------------------------- Duel's ledger
+  //
+  // Duel has no bet table. What it has is /api/v2/user/transactions: a paged,
+  // newest-first ledger of everything that ever moved the balance, bets among
+  // it. Page one is the same "top of the list" the Stake scraper reads off the
+  // table, and the accounting downstream treats it identically — including the
+  // gap detection for bets that scrolled past unseen.
+
+  /** Duel's currency ids. Second copy of the map in lib/rates.js; see there. */
+  const DUEL_CURRENCIES = {
+    101: 'BTC', 102: 'BCH', 103: 'ETH', 104: 'LTC', 105: 'USDT', 106: 'USDC',
+    107: 'BNB', 108: 'TRX', 109: 'SOL', 110: 'XRP', 111: 'DOGE', 112: 'ADA',
+    113: 'LINK', 114: 'AVAX', 115: 'XLM', 116: 'TON', 117: 'HBAR', 118: 'DOT',
+  };
+
+  /**
+   * Which ledger rows are bets.
+   *
+   * Duel names the source table in `key`: mines_rounds, dice_rounds, crash_bets,
+   * slots_spins. Deposits, withdrawals and rakeback claims sit in the same feed
+   * under names of their own (withdrawal_invoices, user_rakeback_balances), and
+   * booking a withdrawal as a losing bet would be considerably worse than
+   * missing it — so this matches what a bet is called rather than excluding a
+   * list of what it is not.
+   */
+  const DUEL_BET_KEY_RE = /_(rounds|bets|spins)$/;
+
+  /** "0.20000000" -> 0.2. Duel sends amounts as strings; blanks stay null. */
+  function parseDuelAmount(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /**
+   * Is a round finished?
+   *
+   * Every game Duel runs itself carries a status, and 0 means the round is
+   * still going — `ACTIVE` for mines, dice and crash, `INITIALIZING_TABLE` for
+   * blackjack. Blackjack is the exception worth naming: its hand runs through
+   * four more in-progress states before `FINISHED`, so "not zero" would book a
+   * hand mid-deal as a total loss.
+   *
+   * Provider slots carry no status at all. Those settle server-side in one go,
+   * so a round with a wager line is a finished round, and the caller decides.
+   *
+   * @returns true / false, or null when the feed did not say.
+   */
+  const DUEL_ROUND_ACTIVE = 0;
+  const DUEL_BLACKJACK_FINISHED = 5;
+
+  function duelSettled(key, status) {
+    if (!Number.isFinite(status)) return null;
+    if (key === 'blackjack_rounds') return status === DUEL_BLACKJACK_FINISHED;
+    return status !== DUEL_ROUND_ACTIVE;
+  }
+
+  /**
+   * Bets out of one page of Duel's transaction feed, newest first, in the shape
+   * the session accounting already takes.
+   *
+   * **A round is not a row.** This is the thing that has to be got right, and
+   * getting it wrong is not a rounding error — it inverts the P/L. Duel's feed
+   * is a *balance ledger*, not a bet list: a won round writes two lines under
+   * the same key, one negative for the wager and one positive for the return,
+   * and the top-level `amount_currency` is that line's movement, not the stake.
+   * Read line by line, a 0.66 stake returning 0.72 reads as a bet of −0.66 that
+   * paid 0.72 *plus* a bet of 0.72 that paid 0.72 — turnover doubled and the
+   * profit nonsense. So lines are grouped into rounds by `data.id` first, and
+   * one bet comes out per round.
+   *
+   * Two ways to price a round, in order:
+   *
+   *  1. `data.amount_currency` and `data.amount_won` — the round's own stake and
+   *     gross return, carried identically on *both* of its lines. Every game
+   *     Duel runs itself sends these, and because either line alone is enough,
+   *     it does not matter which side of a page boundary the other one fell.
+   *  2. The lines themselves, for provider slots, whose `data` holds nothing but
+   *     an id: stake is what was debited, return is what was credited. A group
+   *     with only a credit is one whose wager line fell off the end of the page,
+   *     and is dropped rather than booked as a stake-free win.
+   *
+   * Duel's feed can also mix coins — a USDT session and a BTC one land in the
+   * same list — while a session is denominated in exactly one. So the coin of
+   * the newest bet wins and rounds in any other coin are left out, which is the
+   * same thing Stake's table does by only ever showing one coin at a time.
+   * Switching wallet mid-session is then caught by the accounting, which says so.
+   *
+   * @returns {{rows: Array, currency: string|null, mixed: number}}
+   */
+  function betsFromDuel(json) {
+    const feed = Array.isArray(json?.data) ? json.data : [];
+
+    // Insertion order is the feed's order, which is newest first — the same
+    // order the Stake scraper hands back, and the one the accounting expects.
+    const rounds = new Map();
+
+    for (const entry of feed) {
+      const key = String(entry?.key || '');
+      if (!DUEL_BET_KEY_RE.test(key)) continue;
+
+      // The round id, not the ledger line's. A line id would count a won round
+      // twice — once as its wager, once as its return.
+      const round = entry?.data?.id;
+      if (round === null || round === undefined) continue;
+
+      const id = `${key}:${round}`;
+      let group = rounds.get(id);
+
+      if (!group) {
+        group = {
+          id,
+          key,
+          game: String(entry.type || key),
+          currency: DUEL_CURRENCIES[Number(entry.currency)] || null,
+          // The round's own figures, when the game sends them.
+          stake: parseDuelAmount(entry?.data?.amount_currency),
+          won: parseDuelAmount(entry?.data?.amount_won),
+          settled: duelSettled(key, Number(entry?.data?.status)),
+          // What its lines moved, for the games that send nothing else.
+          debited: 0,
+          credited: 0,
+          wagered: false,
+        };
+        rounds.set(id, group);
+      }
+
+      const line = parseDuelAmount(entry.amount_currency);
+      if (line === null) continue;
+      if (line < 0) {
+        group.debited -= line;
+        group.wagered = true;
+      } else if (line > 0) {
+        group.credited += line;
+      } else {
+        // A zero line is still a round that happened — a free spin, or a stake
+        // too small to move the balance. It has no wager to find in the lines,
+        // but the round's own figures may still price it.
+        group.wagered = group.wagered || group.stake !== null;
+      }
+    }
+
+    const all = [];
+
+    for (const group of rounds.values()) {
+      const exact = group.stake !== null && group.won !== null;
+      if (!exact && !group.wagered) continue; // a credit whose wager is off-page
+
+      all.push({
+        id: group.id,
+        // Nothing said either way — a provider slot — means finished: they are
+        // settled server-side in one go, and there is no open state to be in.
+        settled: group.settled === null ? true : group.settled,
+        game: group.game,
+        amount: exact ? group.stake : group.debited,
+        payout: exact ? group.won : group.credited,
+        currency: group.currency,
+      });
+    }
+
+    const currency = all.length ? all[0].currency : null;
+    const rows = all.filter((row) => row.currency === currency);
+
+    // Stripped of the per-row coin, because everything downstream takes one
+    // currency for the whole batch and a second one on a row would be a lie
+    // waiting to be read.
+    return {
+      rows: rows.map(({ currency: _coin, ...row }) => row),
+      currency,
+      mixed: all.length - rows.length,
+    };
+  }
+
+  const API = {
+    MY_BETS_HEADERS, parseCell, findMyBetsTable, scrapeBets,
+    SITES, siteFor, DUEL_CURRENCIES, DUEL_BET_KEY_RE, duelSettled, betsFromDuel,
+  };
+
+  // In the page: a global in the content script's isolated world, read by
+  // content.js. In Node: a CommonJS export, read by the test harness. The guard
+  // is what lets one file be both.
+  root.StakeScrape = API;
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+})(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -1,0 +1,1001 @@
+{
+  "extName": {
+    "message": "Stake USDT לשקל"
+  },
+  "extDescription": {
+    "message": "מציג סכומים בקזינו במטבע שלך לפי שער חי. ריחוף, סימון, או הצמדת היתרה לחלונית צפה."
+  },
+  "actionTitle": {
+    "message": "ממיר USDT"
+  },
+  "popRateUnit": {
+    "message": "$CUR$ לכל USDT",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "popFetching": {
+    "message": "טוען…"
+  },
+  "popSession": {
+    "message": "סשן"
+  },
+  "popReset": {
+    "message": "איפוס"
+  },
+  "popPl": {
+    "message": "רווח/הפסד"
+  },
+  "popWagered": {
+    "message": "מחזור"
+  },
+  "popBets": {
+    "message": "הימורים"
+  },
+  "popJustStarted": {
+    "message": "רק התחיל"
+  },
+  "popFundsLabel": {
+    "message": "כסף פנימה / החוצה ($COIN$)",
+    "placeholders": {
+      "coin": {
+        "content": "$1",
+        "example": "USDT"
+      }
+    }
+  },
+  "popFundsLog": {
+    "message": "רשום"
+  },
+  "popLimits": {
+    "message": "מגבלות סשן"
+  },
+  "popSaved": {
+    "message": "נשמר"
+  },
+  "popLimWager": {
+    "message": "מחזור"
+  },
+  "popLimLoss": {
+    "message": "הפסד"
+  },
+  "popLimWin": {
+    "message": "רווח"
+  },
+  "popLimTime": {
+    "message": "זמן דק׳"
+  },
+  "popOff": {
+    "message": "כבוי"
+  },
+  "popOverlay": {
+    "message": "חלונית ב־Stake"
+  },
+  "popOverlaySub": {
+    "message": "תצוגה צפה + יתרה מוצמדת"
+  },
+  "popHover": {
+    "message": "המרה בריחוף"
+  },
+  "popHoverSub": {
+    "message": "חלונית מעל כל סכום"
+  },
+  "popInline": {
+    "message": "הוספת המרה בשורה"
+  },
+  "popInlineSub": {
+    "message": "מוסיף את הסכום המומר אחרי סכומים מתויגים"
+  },
+  "popRefresh": {
+    "message": "רענן שער עכשיו"
+  },
+  "popRefreshing": {
+    "message": "מרענן…"
+  },
+  "popRefreshAccount": {
+    "message": "רענן"
+  },
+  "popStakeUnread": {
+    "message": "טרם נקרא"
+  },
+  "popStakeNoAnswer": {
+    "message": "אין תשובה — פתח את לשונית Stake שבה אתה משחק, והנתונים יתרעננו שם."
+  },
+  "popAllSettings": {
+    "message": "כל ההגדרות"
+  },
+  "limitsOffHint": {
+    "message": "ריק = כבוי. מסומן בחלונית כשסשן עובר מגבלה — שום דבר לא נחסם."
+  },
+  "limitsNoRate": {
+    "message": "אין עדיין שער, אז אי אפשר להשוות את מגבלות הכסף עד שיגיע אחד."
+  },
+  "limitsTimeHint": {
+    "message": "הזמן נמדד מההימור הראשון בסשן, לא מפתיחת הלשונית."
+  },
+  "limitsRejected": {
+    "message": "„$VALUE$” אינו מגבלה — צריך מספר גדול מאפס. נשאר כבוי.",
+    "placeholders": {
+      "value": {
+        "content": "$1",
+        "example": "1,000"
+      }
+    }
+  },
+  "limitReached": {
+    "message": "מגבלה נחצתה — "
+  },
+  "limitWinReached": {
+    "message": "יעד רווח הושג — "
+  },
+  "limitApproaching": {
+    "message": "מתקרב — "
+  },
+  "labelUp": {
+    "message": "ברווח"
+  },
+  "labelDown": {
+    "message": "בהפסד"
+  },
+  "labelTime": {
+    "message": "זמן"
+  },
+  "checkWaiting": {
+    "message": "הצלבת היתרה ממתינה לקריאה מהארנק."
+  },
+  "checkPin": {
+    "message": "הצמד את היתרה ב־Stake כדי להצליב את המספרים מול הארנק."
+  },
+  "checkSettling": {
+    "message": "ההצלבה מתייצבת — הימור עדיין נוחת בצד אחד."
+  },
+  "sessIdle": {
+    "message": "לא פעיל — הסשן הסתיים ויתויק להיסטוריה בהימור הבא."
+  },
+  "notifyWagerTitle": {
+    "message": "מגבלת מחזור נחצתה"
+  },
+  "notifyLossTitle": {
+    "message": "מגבלת הפסד נחצתה"
+  },
+  "notifyWinTitle": {
+    "message": "יעד רווח הושג"
+  },
+  "notifyTimeTitle": {
+    "message": "מגבלת זמן נחצתה"
+  },
+  "hudTitle": {
+    "message": "USDT ל־$CUR$",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "hudRefresh": {
+    "message": "רענן שער"
+  },
+  "hudHide": {
+    "message": "הסתר חלונית"
+  },
+  "hudNewSession": {
+    "message": "התחל סשן חדש"
+  },
+  "hudRefreshAccount": {
+    "message": "קרא שוב רייקבק ו-VIP עכשיו"
+  },
+  "hudRefreshingShort": {
+    "message": "מבקש…"
+  },
+  "hudAccountUnread": {
+    "message": "טרם נקרא"
+  },
+  "hudAccountNoBridge": {
+    "message": "אין תשובה מהעמוד — טען מחדש את Stake ונסה שוב."
+  },
+  "hudPin": {
+    "message": "הצמד סכום בדף"
+  },
+  "hudRepin": {
+    "message": "הצמדה מחדש"
+  },
+  "hudNoRate": {
+    "message": "אין שער"
+  },
+  "hudPickBanner": {
+    "message": "לחץ על הסכום להצמדה · Esc לביטול"
+  },
+  "hudPinnedAmount": {
+    "message": "סכום מוצמד"
+  },
+  "hudNotOnPage": {
+    "message": "האלמנט לא נמצא בדף הזה"
+  },
+  "hudNoNumber": {
+    "message": "אין מספר באלמנט"
+  },
+  "hudBalance": {
+    "message": "יתרת $COIN$",
+    "placeholders": {
+      "coin": {
+        "content": "$1",
+        "example": "USDT"
+      }
+    }
+  },
+  "hudNoCoinRate": {
+    "message": "אין עדיין שער ל־$COIN$",
+    "placeholders": {
+      "coin": {
+        "content": "$1",
+        "example": "BTC"
+      }
+    }
+  },
+  "optTitle": {
+    "message": "ממיר USDT ל‑Stake"
+  },
+  "optIntro": {
+    "message": "שער חי מ־CoinGecko, עם נפילה לפיד מבוסס דולר. עובד גם בלי מפתח API; הוספת מפתח Demo למטה מפסיקה לחלוק מגבלת קצב עם כל מי שנמצא על אותה כתובת IP."
+  },
+  "optTarget": {
+    "message": "המרה ל"
+  },
+  "optTargetSub": {
+    "message": "המטבע שבו מוצג כל סכום. שינוי שלו שולח בקשה חדשה לספקי השער, קורא מחדש את טבלאות המחירים של הקזינו, וממיר את מגבלות הכסף שלך פעם אחת כדי שיישארו במשמעות שהגדרת."
+  },
+  "optRate": {
+    "message": "שער"
+  },
+  "optStakeRates": {
+    "message": "השתמש בטבלת השערים של הקזינו"
+  },
+  "optStakeRatesSub": {
+    "message": "שני האתרים מפרסמים טבלת מטבעות, כולל רוב מטבעות הפיאט הגדולים, כדי לתמחר את מה שהם מציגים לך — והמרה לפיה היא המרה עם אותו מספר שבו חושבה היתרה שעל המסך. האפליקציה של Stake מושכת את שלה כל כמה שניות, ולכן הקריאה לא עולה שום בקשה. Duel מושכת את שלה פעם אחת בטעינת עמוד, ולכן כל עוד לשונית Duel פתוחה, גלויה ובפוקוס — נשלחת בקשה אחת בדקה; הטבלה הזו ציבורית ואין בה נתוני חשבון. הספקים נשארים כגיבוי לכל השאר."
+  },
+  "optRefreshEvery": {
+    "message": "רענון כל"
+  },
+  "optRefreshEverySub": {
+    "message": "דקות. כרום לא יפעיל יותר מפעם בדקה."
+  },
+  "optDecimals": {
+    "message": "ספרות אחרי הנקודה"
+  },
+  "optDecimalsSub": {
+    "message": "איך סכומים מומרים מעוגלים לתצוגה. מטבע ללא יחידת משנה — הין — מתעלם מזה ומוצג ביחידות שלמות."
+  },
+  "optSpread": {
+    "message": "מרווח פדיון %"
+  },
+  "optSpreadSub": {
+    "message": "מה שהבורסה שלך באמת גובה. מופחת מהשער המצוטט כדי שהמספר יתאים למה שבאמת תקבל. 0 מציג את שער האמצע הגולמי."
+  },
+  "optManual": {
+    "message": "שער ידני"
+  },
+  "optManualSub": {
+    "message": "השאר ריק כדי להשתמש בפיד החי. הזן מספר כדי להתעלם ממנו לגמרי."
+  },
+  "optManualPh": {
+    "message": "חי"
+  },
+  "optKey": {
+    "message": "מפתח API של CoinGecko"
+  },
+  "optKeyIntro": {
+    "message": "אופציונלי. מפתח Demo מעלה את התקרה לדקה מהמאגר ללא מפתח (בערך 10–30 לדקה, משותף עם כל מי שעל אותה כתובת IP) ל־100 לדקה — אבל מוסיף תקרה של 10,000 קריאות לחודש שלא קיימת ללא מפתח. נשמר במחשב הזה בלבד, לא מסתנכרן, ולא נחשף לסקריפט שרץ בתוך Stake."
+  },
+  "optNoKey": {
+    "message": "לא מותקן מפתח"
+  },
+  "optSave": {
+    "message": "שמור"
+  },
+  "optTest": {
+    "message": "בדוק"
+  },
+  "optClear": {
+    "message": "נקה"
+  },
+  "optOnPage": {
+    "message": "בתוך הדף"
+  },
+  "optEnabled": {
+    "message": "התוסף פעיל"
+  },
+  "optEnabledSub": {
+    "message": "כיבוי מסיר את החלונית מ־Stake לגמרי."
+  },
+  "optTrack": {
+    "message": "מעקב רווח/הפסד ומחזור בסשן"
+  },
+  "optTrackSub": {
+    "message": "סכומי הימור ותשלומים מדויקים לכל הימור, בלי כפילויות לפי מזהה ההימור, ותמיד רק ההימורים שלך. ב‑Stake זה מגיע מטבלת „My Bets” תוך מעקב אחרי הרינדור מחדש — מלשונית All Bets מתעלמים. ל‑Duel אין טבלת הימורים, ולכן פיד התנועות שלה משמש במקומה: מדויק לא פחות, אבל צריך לבקש אותו — ולכן כל עוד לשונית Duel פתוחה, גלויה ובפוקוס, נקרא העמוד העדכני כל 15 שניות."
+  },
+  "optHud": {
+    "message": "חלונית צפה"
+  },
+  "optHudSub": {
+    "message": "חלונית נגררת עם השער והסכום המוצמד."
+  },
+  "optHover": {
+    "message": "המרה בריחוף"
+  },
+  "optHoverSub": {
+    "message": "חלונית כשמצביעים על סכום."
+  },
+  "optSelection": {
+    "message": "המרה בסימון"
+  },
+  "optSelectionSub": {
+    "message": "סמן כל מספר כדי להמיר אותו, מתויג או לא."
+  },
+  "optUnlabeled": {
+    "message": "התייחס למספרים לא מתויגים כ־USDT"
+  },
+  "optUnlabeledSub": {
+    "message": "ליתרה בכותרת של Stake אין טקסט מטבע לידה. הפעלה קוראת מספרים חשופים ככסף — כלומר גם יחסים ומכפילים יומרו."
+  },
+  "optInline": {
+    "message": "הוספת המרה בשורה"
+  },
+  "optInlineSub": {
+    "message": "מוסיף את הסכום המומר אחרי סכומים שנושאים תווית מטבע. מיושם ככלל CSS ולא בהוספת אלמנטים, כך שאינו יכול לשבור את התצוגה של Stake."
+  },
+  "optHistory": {
+    "message": "היסטוריית סשנים"
+  },
+  "optHistoryIntro": {
+    "message": "סשנים מתויקים אוטומטית כשהם נרגעים, וגם בכל איפוס. כל אחד נרשם עם השער שהיה בסגירה, כך שסשן ישן שומר על הסכום שבאמת היה לו במקום שיחושב מחדש לפי השער של היום. מחיר המטבע בדולרים וטבלת שערי החליפין נשמרים לצידו, כך שאפשר לקרוא את אותו סשן במטבע שתבחר מאוחר יותר — עדיין לפי השערים של אותו ערב."
+  },
+  "optIdle": {
+    "message": "סיים סשן אחרי"
+  },
+  "optIdleSub": {
+    "message": "דקות ללא הימור עד שהסשן נחשב גמור."
+  },
+  "optLimWager": {
+    "message": "מגבלת מחזור ($CUR$)",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "optLimWagerSub": {
+    "message": "מסומן בחלונית כשהמחזור של הסשן עובר אותה. ריק = כבוי."
+  },
+  "optLimLoss": {
+    "message": "מגבלת הפסד ($CUR$)",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "optLimLossSub": {
+    "message": "מסומן כשהסשן בהפסד בסכום הזה. ריק = כבוי."
+  },
+  "optLimWin": {
+    "message": "מגבלת רווח ($CUR$)",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "optLimWinSub": {
+    "message": "מסומן כשהסשן ברווח בסכום הזה — סימון לקיחת רווח. שלושתן במטבע שאליו אתה ממיר, מושוות לפי השער הנוכחי. אפשר להגדיר אותן גם ישירות מחלונית סרגל הכלים."
+  },
+  "optLimTime": {
+    "message": "מגבלת זמן (דקות)"
+  },
+  "optLimTimeSub": {
+    "message": "מסומן כשהסשן רץ כבר זמן כזה. נספר מההימור הראשון שלו, לא מפתיחת הלשונית, ואינו צריך שער — לכן חל על כל מטבע. ריק = כבוי."
+  },
+  "optAlerts": {
+    "message": "התראות"
+  },
+  "optBadge": {
+    "message": "תג בסרגל הכלים"
+  },
+  "optBadgeSub": {
+    "message": "רווח/הפסד של הסשן במטבע שלך על אייקון התוסף כשסשן רץ, והשער כשאין. ירוק ברווח, אדום בהפסד."
+  },
+  "optNotify": {
+    "message": "התראה כשנחצית מגבלה"
+  },
+  "optNotifySub": {
+    "message": "התראת מערכת, פעם אחת לכל מגבלה בכל סשן. החלונית מגיעה אליך רק כש־Stake היא הלשונית שאתה מסתכל עליה."
+  },
+  "optCurrentBets": {
+    "message": "הימורים שנספרו לסשן שרץ עכשיו — השווה אותם לרשימה של Stake אם סכום נראה שגוי."
+  },
+  "optExportBets": {
+    "message": "ייצוא הימורים"
+  },
+  "optExportSessions": {
+    "message": "ייצוא סשנים"
+  },
+  "optClearHistory": {
+    "message": "מחיקת היסטוריה"
+  },
+  "optByYear": {
+    "message": "לפי שנה"
+  },
+  "optByYearIntro": {
+    "message": "כל סשן מסוכם לפי השער שבו נסגר, מקובץ כברירת מחדל לפי שנה קלנדרית. סשנים שנרשמו לפני שנשלף שער כלשהו אינם נושאים סכום מומר ונספרים בנפרד במקום להישמט בשקט."
+  },
+  "optExportYears": {
+    "message": "ייצוא שנים"
+  },
+  "optDiagnostics": {
+    "message": "אבחון"
+  },
+  "optDiagnosticsIntro": {
+    "message": "תקלות בתוך הדף מדווחות כאן. ריק זה מה שרוצים לראות — אם החלונית משתתקת או מציגה מספרים ישנים, זה המקום הראשון להסתכל בו."
+  },
+  "optPinned": {
+    "message": "סכום מוצמד"
+  },
+  "optNothingPinned": {
+    "message": "לא הוצמד כלום"
+  },
+  "optPinnedSub": {
+    "message": "השתמש ב„הצמד סכום בדף” בחלונית שב־Stake."
+  },
+  "optResetAll": {
+    "message": "אפס הכל להגדרות ברירת המחדל"
+  },
+  "statusSaved": {
+    "message": "נשמר."
+  },
+  "statusReset": {
+    "message": "אופס להגדרות ברירת המחדל."
+  },
+  "statusDiagCleared": {
+    "message": "האבחון נוקה."
+  },
+  "statusHistoryCleared": {
+    "message": "ההיסטוריה נמחקה."
+  },
+  "statusKeySaved": {
+    "message": "המפתח נשמר."
+  },
+  "statusKeyRemoved": {
+    "message": "המפתח הוסר — חזרה למצב ללא מפתח."
+  },
+  "statusPasteKey": {
+    "message": "הדבק מפתח קודם."
+  },
+  "statusNoBets": {
+    "message": "אין עדיין הימורים בסשן הנוכחי."
+  },
+  "colStarted": {
+    "message": "התחיל"
+  },
+  "colLength": {
+    "message": "אורך"
+  },
+  "colCoin": {
+    "message": "מטבע"
+  },
+  "colBets": {
+    "message": "הימורים"
+  },
+  "colWl": {
+    "message": "נ/ה"
+  },
+  "colWagered": {
+    "message": "מחזור"
+  },
+  "colPl": {
+    "message": "רווח/הפסד"
+  },
+  "colBooks": {
+    "message": "הצלבה"
+  },
+  "colYear": {
+    "message": "שנה"
+  },
+  "colSessions": {
+    "message": "סשנים"
+  },
+  "colPlayed": {
+    "message": "זמן משחק"
+  },
+  "colWhen": {
+    "message": "מתי"
+  },
+  "colGame": {
+    "message": "משחק"
+  },
+  "colStake": {
+    "message": "הימור"
+  },
+  "colReturned": {
+    "message": "הוחזר"
+  },
+  "colProfit": {
+    "message": "רווח"
+  },
+  "cardLifetime": {
+    "message": "$COIN$ — כל הזמנים",
+    "placeholders": {
+      "coin": {
+        "content": "$1",
+        "example": "USDT"
+      }
+    }
+  },
+  "optPinnedElement": {
+    "message": "אלמנט מוצמד"
+  },
+  "historyNone": {
+    "message": "לא נרשמו עדיין סשנים."
+  },
+  "historyCount": {
+    "message": "נרשמו $N$ סשנים.",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "historyEmpty": {
+    "message": "עדיין לא נרשם כלום — שחק סשן והוא יופיע כאן."
+  },
+  "yearEmpty": {
+    "message": "עדיין לא נרשם כלום."
+  },
+  "yearUnpriced": {
+    "message": "‏$N$ סשנים נסגרו ללא שער ולכן אינם נכללים בעמודות המומרות.",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "yearAllPriced": {
+    "message": "לכל סשן שנרשם יש את השער שבו נסגר."
+  },
+  "diagNone": {
+    "message": "לא דווחו תקלות."
+  },
+  "diagCount": {
+    "message": "דווחו $N$ תקלות.",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "diagClean": {
+    "message": "אין מה לדווח — החלונית לא נפלה מאז הניקוי האחרון."
+  },
+  "keyKeyless": {
+    "message": "משתמש ב-API הציבורי ללא מפתח — אין תקרה חודשית."
+  },
+  "optKeyInstalled": {
+    "message": "מפתח מותקן ($PREVIEW$)",
+    "placeholders": {
+      "preview": {
+        "content": "$1",
+        "example": "CG-…a1b2"
+      }
+    }
+  },
+  "optLanguage": {
+    "message": "שפה"
+  },
+  "optLanguageSub": {
+    "message": "אוטומטי הולך לפי שפת התצוגה של כרום. חל בכל מקום בבת אחת — החלונית, ההגדרות והתצוגה שב־Stake."
+  },
+  "optLangAuto": {
+    "message": "אוטומטי"
+  },
+  "stakeAccount": {
+    "message": "חשבון STAKE"
+  },
+  "siteAccount": {
+    "message": "חשבון $SITE$",
+    "placeholders": {
+      "site": {
+        "content": "$1",
+        "example": "DUEL"
+      }
+    }
+  },
+  "rakeback": {
+    "message": "רייקבק"
+  },
+  "vip": {
+    "message": "VIP"
+  },
+  "optStake": {
+    "message": "חשבון הקזינו"
+  },
+  "optRakeback": {
+    "message": "קריאת רייקבק והתקדמות VIP"
+  },
+  "optRakebackSub": {
+    "message": "קורא את נתוני החשבון שהאפליקציה של הקזינו כבר מושכת בעצמה, ומציג את יתרת הרייקבק מומרת — התקדמות VIP ב‑Stake, הרמה שלך ב‑Duel. צפייה בלבד: לא מוסיף בקשות משלו עד שתבקש, בכפתור הרענון או בסקר שלמטה."
+  },
+  "optRakebackPoll": {
+    "message": "רענון כל דקה"
+  },
+  "optRakebackPollSub": {
+    "message": "חוזר על אחת מהבקשות של האתר עצמו כל עוד הלשונית פתוחה ובפוקוס, במקום לחכות שהאפליקציה תשאל. זו תנועה אוטומטית ל-API של החשבון בקזינו מהסשן שלך — התנאים שלהם והטיפול שלהם בבוטים הם שלהם, וסימון החשבון הוא הסיכון שאתה לוקח. כבוי אלא אם אתה רוצה את זה."
+  },
+  "hudRateLine": {
+    "message": "1 USDT = $AMOUNT$",
+    "placeholders": {
+      "amount": {
+        "content": "$1",
+        "example": "€3.05"
+      }
+    }
+  },
+  "rateSourceUnknown": {
+    "message": "מקור לא ידוע"
+  },
+  "rateKeyed": {
+    "message": "מפתח Demo"
+  },
+  "rateUpdated": {
+    "message": "עודכן $AGE$",
+    "placeholders": {
+      "age": {
+        "content": "$1",
+        "example": "לפני 4 דק׳"
+      }
+    }
+  },
+  "rateFailed": {
+    "message": "המשיכה האחרונה נכשלה"
+  },
+  "rateViaUsd": {
+    "message": "דרך הדולר"
+  },
+  "rateSpread": {
+    "message": "כולל מרווח $PERCENT$%",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "1.5"
+      }
+    }
+  },
+  "feeNote": {
+    "message": "כולל מרווח פדיון של $PERCENT$% (שער אמצע $MID$).",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "1.5"
+      },
+      "mid": {
+        "content": "$2",
+        "example": "3.052"
+      }
+    }
+  },
+  "ageNever": {
+    "message": "מעולם לא"
+  },
+  "ageJustNow": {
+    "message": "ממש עכשיו"
+  },
+  "ageSeconds": {
+    "message": "לפני $N$ שנ׳",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "30"
+      }
+    }
+  },
+  "ageMinutes": {
+    "message": "לפני $N$ דק׳",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "4"
+      }
+    }
+  },
+  "ageHours": {
+    "message": "לפני $N$ שע׳",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "ageDays": {
+    "message": "לפני $N$ ימים",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "limitOf": {
+    "message": "מתוך"
+  },
+  "unitMin": {
+    "message": "דק׳"
+  },
+  "winLoss": {
+    "message": "$W$ נצחונות / $L$ הפסדים",
+    "placeholders": {
+      "w": {
+        "content": "$1",
+        "example": "3"
+      },
+      "l": {
+        "content": "$2",
+        "example": "7"
+      }
+    }
+  },
+  "sessGaps": {
+    "message": "$N$ פערים — הימורים חלפו בלי שנראו, אז הסכומים האלה הם רצפה",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "sessCoinSwitch": {
+    "message": "הסשן ב־$SESSION$, הארנק עכשיו ב־$WALLET$ — הימורים חדשים לא נספרים",
+    "placeholders": {
+      "session": {
+        "content": "$1",
+        "example": "USDT"
+      },
+      "wallet": {
+        "content": "$2",
+        "example": "BTC"
+      }
+    }
+  },
+  "checkAgree": {
+    "message": "הספרים והארנק מסכימים"
+  },
+  "checkMoved": {
+    "message": "אחרי $AMOUNT$ שנרשמו פנימה/החוצה",
+    "placeholders": {
+      "amount": {
+        "content": "$1",
+        "example": "+50"
+      }
+    }
+  },
+  "checkIncomplete": {
+    "message": "המספרים האלה חלקיים. הארנק זז ב־$WALLET$ $COIN$ אבל ההימורים מסבירים רק $LEDGER$ — $MISSING$ $COIN$ $DIRECTION$. נעשו הימורים שהתוסף לא ראה.",
+    "placeholders": {
+      "wallet": {
+        "content": "$1",
+        "example": "-0.4"
+      },
+      "coin": {
+        "content": "$2",
+        "example": "USDT"
+      },
+      "ledger": {
+        "content": "$3",
+        "example": "-0.2"
+      },
+      "missing": {
+        "content": "$4",
+        "example": "0.2"
+      },
+      "direction": {
+        "content": "$5",
+        "example": "של הפסדים חסרים בספרים"
+      }
+    }
+  },
+  "checkMissingLosses": {
+    "message": "של הפסדים חסרים בספרים"
+  },
+  "checkMissingWins": {
+    "message": "של זכיות לא רשומות בספרים"
+  },
+  "hudIncomplete": {
+    "message": "חלקי — הארנק זז ב־$WALLET$ אבל ההימורים מסבירים $LEDGER$ $COIN$. $MISSING$ לא מוסברים.",
+    "placeholders": {
+      "wallet": {
+        "content": "$1",
+        "example": "-0.4"
+      },
+      "ledger": {
+        "content": "$2",
+        "example": "-0.2"
+      },
+      "coin": {
+        "content": "$3",
+        "example": "USDT"
+      },
+      "missing": {
+        "content": "$4",
+        "example": "0.2"
+      }
+    }
+  },
+  "fundsLogged": {
+    "message": "$AMOUNT$ נרשמו",
+    "placeholders": {
+      "amount": {
+        "content": "$1",
+        "example": "+50.0000"
+      }
+    }
+  },
+  "optGraph": {
+    "message": "רווח והפסד"
+  },
+  "optGraphIntro": {
+    "message": "המקום שבו היית כשהסשן נפתח הוא הקו שבאמצע. ירוק מעליו זה רווח, אדום מתחתיו זה הפסד, וכל מדרגה היא הימור אחד. סשנים מארכיון שומרים עותק מדולל של העקומה; מה שנרשם לפני שזה היה קיים לא שומר כלום."
+  },
+  "chartCurrent": {
+    "message": "הסשן הנוכחי"
+  },
+  "chartEmpty": {
+    "message": "אין עדיין מה לצייר — שחק כמה הימורים והעקומה תופיע כאן."
+  },
+  "chartBets": {
+    "message": "$N$ הימורים",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "chartBaseline": {
+    "message": "תחילת הסשן"
+  },
+  "chartNoRate": {
+    "message": "אין שער לסשן הזה במטבע הזה, ולכן המספרים ביחידות המטבע."
+  },
+  "chartPeak": {
+    "message": "שיא $V$",
+    "placeholders": {
+      "v": {
+        "content": "$1",
+        "example": "+€120.00"
+      }
+    }
+  },
+  "chartTrough": {
+    "message": "שפל $V$",
+    "placeholders": {
+      "v": {
+        "content": "$1",
+        "example": "−€80.00"
+      }
+    }
+  },
+  "limitWordWager": {
+    "message": "מחזור"
+  },
+  "limitWordLoss": {
+    "message": "הפסד"
+  },
+  "limitWordWin": {
+    "message": "רווח"
+  },
+  "limitsRateHint": {
+    "message": "בשער $RATE$ $CUR$/USDT זה בערך $BACK$.",
+    "placeholders": {
+      "rate": {
+        "content": "$1",
+        "example": "3.052"
+      },
+      "cur": {
+        "content": "$2",
+        "example": "EUR"
+      },
+      "back": {
+        "content": "$3",
+        "example": "wager 330.00 USDT"
+      }
+    }
+  },
+  "colPlMoney": {
+    "message": "רווח/הפסד ($CUR$)",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "colWageredMoney": {
+    "message": "מחזור ($CUR$)",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "whyNoRate": {
+    "message": "הסשן הזה נסגר לפני שנשלף שער כלשהו, ולכן אין לו סכום מומר בכלל."
+  },
+  "whyNoCross": {
+    "message": "הסשן הזה נרשם עם שער שהזנת ידנית, או במטבע שהטבלה השמורה לא כיסתה, ולכן אפשר לקרוא אותו רק במטבע שבו נסגר."
+  },
+  "whyLegacy": {
+    "message": "נרשם לפני שהתוסף ידע להמיר ליותר ממטבע אחד, ולכן אפשר לקרוא אותו רק בשקלים."
+  },
+  "yearLegacy": {
+    "message": "‏$N$ סשנים ניתנים לקריאה רק במטבע שבו נסגרו, ולכן הם מושמטים במקום להיות מומרים לפי שער שמעולם לא היה שלהם.",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "limitsCleared": {
+    "message": "מגבלות הכסף שלך הוגדרו ב־$FROM$ ולא היה שער חליפין זמין כדי להעביר אותן ל־$TO$, ולכן הן כובו. הגדר אותן מחדש למטה.",
+    "placeholders": {
+      "from": {
+        "content": "$1",
+        "example": "ILS"
+      },
+      "to": {
+        "content": "$2",
+        "example": "EUR"
+      }
+    }
+  },
+  "limitsConverted": {
+    "message": "מגבלות הכסף שלך הומרו מ־$FROM$ ל־$TO$ כששינית מטבע: $MOVED$.",
+    "placeholders": {
+      "from": {
+        "content": "$1",
+        "example": "ILS"
+      },
+      "to": {
+        "content": "$2",
+        "example": "EUR"
+      },
+      "moved": {
+        "content": "$3",
+        "example": "₪1,000.00 → €282.00"
+      }
+    }
+  },
+  "optFiscal": {
+    "message": "שנת המס מתחילה ב"
+  },
+  "optFiscalSub": {
+    "message": "ינואר הוא השנה הקלנדרית, שהיא שנת המס בישראל. בבריטניה היא נפתחת באפריל ובאוסטרליה ביולי. זה משנה רק את אופן הקיבוץ למטה — שום מספר לא מחושב מחדש."
+  },
+  "creditPrices": {
+    "message": "מחירים מאת"
+  },
+  "creditRates": {
+    "message": "שערי חליפין מאת"
+  },
+  "creditLicence": {
+    "message": "ברישיון MIT, ומסופק כמות שהוא ללא כל אחריות. הוא מדווח; הוא לא מתערב, ואין כאן ייעוץ מס או ייעוץ פיננסי."
+  }
+}

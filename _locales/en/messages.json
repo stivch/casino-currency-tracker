@@ -1,0 +1,1001 @@
+{
+  "extName": {
+    "message": "Stake USDT → ILS"
+  },
+  "extDescription": {
+    "message": "Shows casino amounts in your own currency at a live rate. Hover, select, or pin your balance to a floating readout."
+  },
+  "actionTitle": {
+    "message": "USDT converter"
+  },
+  "popRateUnit": {
+    "message": "$CUR$ per USDT",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "popFetching": {
+    "message": "fetching…"
+  },
+  "popSession": {
+    "message": "SESSION"
+  },
+  "popReset": {
+    "message": "Reset"
+  },
+  "popPl": {
+    "message": "P/L"
+  },
+  "popWagered": {
+    "message": "Wagered"
+  },
+  "popBets": {
+    "message": "Bets"
+  },
+  "popJustStarted": {
+    "message": "just started"
+  },
+  "popFundsLabel": {
+    "message": "Money in / out ($COIN$)",
+    "placeholders": {
+      "coin": {
+        "content": "$1",
+        "example": "USDT"
+      }
+    }
+  },
+  "popFundsLog": {
+    "message": "Log"
+  },
+  "popLimits": {
+    "message": "SESSION LIMITS"
+  },
+  "popSaved": {
+    "message": "saved"
+  },
+  "popLimWager": {
+    "message": "Wager"
+  },
+  "popLimLoss": {
+    "message": "Loss"
+  },
+  "popLimWin": {
+    "message": "Win"
+  },
+  "popLimTime": {
+    "message": "Time min"
+  },
+  "popOff": {
+    "message": "off"
+  },
+  "popOverlay": {
+    "message": "Overlay on Stake"
+  },
+  "popOverlaySub": {
+    "message": "Floating readout + pinned balance"
+  },
+  "popHover": {
+    "message": "Convert on hover"
+  },
+  "popHoverSub": {
+    "message": "Tooltip over any amount"
+  },
+  "popInline": {
+    "message": "Annotate amounts inline"
+  },
+  "popInlineSub": {
+    "message": "Appends the converted figure after labelled amounts"
+  },
+  "popRefresh": {
+    "message": "Refresh rate now"
+  },
+  "popRefreshing": {
+    "message": "Refreshing…"
+  },
+  "popRefreshAccount": {
+    "message": "Refresh"
+  },
+  "popStakeUnread": {
+    "message": "not read yet"
+  },
+  "popStakeNoAnswer": {
+    "message": "No answer — open the Stake tab you play in, and it will refresh there."
+  },
+  "popAllSettings": {
+    "message": "All settings"
+  },
+  "limitsOffHint": {
+    "message": "Blank means off. Flags in the overlay when a session passes one — nothing is blocked."
+  },
+  "limitsNoRate": {
+    "message": "No rate yet, so the money limits cannot be compared until one arrives."
+  },
+  "limitsTimeHint": {
+    "message": "Time runs from the first bet of the session, not from opening the tab."
+  },
+  "limitsRejected": {
+    "message": "“$VALUE$” is not a limit — needs a number above zero. Left off.",
+    "placeholders": {
+      "value": {
+        "content": "$1",
+        "example": "1,000"
+      }
+    }
+  },
+  "limitReached": {
+    "message": "Limit reached — "
+  },
+  "limitWinReached": {
+    "message": "Win target reached — "
+  },
+  "limitApproaching": {
+    "message": "Approaching — "
+  },
+  "labelUp": {
+    "message": "Up"
+  },
+  "labelDown": {
+    "message": "Down"
+  },
+  "labelTime": {
+    "message": "Time"
+  },
+  "checkWaiting": {
+    "message": "Balance cross-check waiting for a wallet reading."
+  },
+  "checkPin": {
+    "message": "Pin your balance on Stake to cross-check these figures against the wallet."
+  },
+  "checkSettling": {
+    "message": "Cross-check settling — a bet is still landing on one side."
+  },
+  "sessIdle": {
+    "message": "Idle — this session is finished and will be filed to history when you next bet."
+  },
+  "notifyWagerTitle": {
+    "message": "Wager limit reached"
+  },
+  "notifyLossTitle": {
+    "message": "Loss limit reached"
+  },
+  "notifyWinTitle": {
+    "message": "Win target reached"
+  },
+  "notifyTimeTitle": {
+    "message": "Time limit reached"
+  },
+  "hudTitle": {
+    "message": "USDT → $CUR$",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "hudRefresh": {
+    "message": "Refresh rate"
+  },
+  "hudHide": {
+    "message": "Hide overlay"
+  },
+  "hudNewSession": {
+    "message": "Start a new session"
+  },
+  "hudRefreshAccount": {
+    "message": "Read rakeback and VIP again now"
+  },
+  "hudRefreshingShort": {
+    "message": "asking…"
+  },
+  "hudAccountUnread": {
+    "message": "not read yet"
+  },
+  "hudAccountNoBridge": {
+    "message": "No answer from the page — reload Stake and try again."
+  },
+  "hudPin": {
+    "message": "Pin an amount on the page"
+  },
+  "hudRepin": {
+    "message": "re-pin"
+  },
+  "hudNoRate": {
+    "message": "no rate"
+  },
+  "hudPickBanner": {
+    "message": "Click the amount to pin · Esc to cancel"
+  },
+  "hudPinnedAmount": {
+    "message": "pinned amount"
+  },
+  "hudNotOnPage": {
+    "message": "element not on this page"
+  },
+  "hudNoNumber": {
+    "message": "no number in element"
+  },
+  "hudBalance": {
+    "message": "$COIN$ balance",
+    "placeholders": {
+      "coin": {
+        "content": "$1",
+        "example": "USDT"
+      }
+    }
+  },
+  "hudNoCoinRate": {
+    "message": "no $COIN$ rate yet",
+    "placeholders": {
+      "coin": {
+        "content": "$1",
+        "example": "BTC"
+      }
+    }
+  },
+  "optTitle": {
+    "message": "Stake USDT converter"
+  },
+  "optIntro": {
+    "message": "Live rate from CoinGecko, falling back to a USD-based feed. Works with no API key; add a Demo key below to stop sharing a rate limit with everyone on your IP."
+  },
+  "optTarget": {
+    "message": "Convert to"
+  },
+  "optTargetSub": {
+    "message": "The currency every amount is shown in. Changing it re-asks the rate providers, re-reads the casinos' price tables, and converts your money limits once so they still mean what you set them to."
+  },
+  "optRate": {
+    "message": "Rate"
+  },
+  "optStakeRates": {
+    "message": "Use the casino's own price table"
+  },
+  "optStakeRatesSub": {
+    "message": "Both sites publish a currency table, most major fiats included, to price what they show you — and converting with it means converting with the same number the balance on screen was drawn with. Stake's app fetches its own every few seconds, so reading it costs no request. Duel fetches its one once per page load, so while a Duel tab is open, visible and focused, this asks for it once a minute; that table is public and carries no account data. The providers stay as the fallback for everywhere else."
+  },
+  "optRefreshEvery": {
+    "message": "Refresh every"
+  },
+  "optRefreshEverySub": {
+    "message": "Minutes. Chrome will not fire more often than once a minute."
+  },
+  "optDecimals": {
+    "message": "Decimal places"
+  },
+  "optDecimalsSub": {
+    "message": "How converted amounts are rounded for display. A currency with no minor unit — the yen — ignores this and shows whole units."
+  },
+  "optSpread": {
+    "message": "Off-ramp spread %"
+  },
+  "optSpreadSub": {
+    "message": "What your exchange actually charges. Subtracted from the quoted rate so the figure matches what you would really receive. 0 shows the raw mid-price."
+  },
+  "optManual": {
+    "message": "Manual rate override"
+  },
+  "optManualSub": {
+    "message": "Leave blank to use the live feed. Set a number to ignore it entirely."
+  },
+  "optManualPh": {
+    "message": "live"
+  },
+  "optKey": {
+    "message": "CoinGecko API key"
+  },
+  "optKeyIntro": {
+    "message": "Optional. A Demo key raises the per-minute ceiling from the keyless pool (~10–30/min, shared with everyone on your IP) to 100/min — but adds a 10,000 calls/month cap that keyless does not have. Stored on this machine only, never synced, and never exposed to the content script running on Stake."
+  },
+  "optNoKey": {
+    "message": "No key installed"
+  },
+  "optSave": {
+    "message": "Save"
+  },
+  "optTest": {
+    "message": "Test"
+  },
+  "optClear": {
+    "message": "Clear"
+  },
+  "optOnPage": {
+    "message": "On the page"
+  },
+  "optEnabled": {
+    "message": "Extension enabled"
+  },
+  "optEnabledSub": {
+    "message": "Off removes the overlay from Stake entirely."
+  },
+  "optTrack": {
+    "message": "Track session P/L and wager"
+  },
+  "optTrackSub": {
+    "message": "Exact stakes and payouts per bet, deduplicated by bet id, and only ever your own. On Stake that comes off the “My Bets” table by watching it re-render — the All Bets tab is ignored. Duel has no bet table, so its own transaction feed stands in: just as exact, but it has to be asked for, so while a Duel tab is open, visible and focused, this reads the newest page every 15 seconds."
+  },
+  "optHud": {
+    "message": "Floating readout"
+  },
+  "optHudSub": {
+    "message": "Draggable panel with the rate and your pinned amount."
+  },
+  "optHover": {
+    "message": "Convert on hover"
+  },
+  "optHoverSub": {
+    "message": "Tooltip when you point at an amount."
+  },
+  "optSelection": {
+    "message": "Convert on selection"
+  },
+  "optSelectionSub": {
+    "message": "Highlight any number to convert it, labelled or not."
+  },
+  "optUnlabeled": {
+    "message": "Assume unlabelled numbers are USDT"
+  },
+  "optUnlabeledSub": {
+    "message": "Stake's header balance has no currency text next to it. Turning this on reads bare numbers as money — which also means odds and multipliers get converted."
+  },
+  "optInline": {
+    "message": "Annotate amounts inline"
+  },
+  "optInlineSub": {
+    "message": "Appends the converted figure after amounts that carry a currency label. Applied as a CSS rule rather than by inserting elements, so it cannot break Stake's own rendering."
+  },
+  "optHistory": {
+    "message": "Session history"
+  },
+  "optHistoryIntro": {
+    "message": "Sessions are filed automatically once they go quiet, and whenever you reset one. Each is recorded with the rate that applied when it closed, so an old session keeps the figure it actually had rather than being restated at today's rate. The coin's dollar price and the exchange-rate table are stored alongside it, so the same session can be read in a currency you pick later — still at that evening's rates."
+  },
+  "optIdle": {
+    "message": "End a session after"
+  },
+  "optIdleSub": {
+    "message": "Minutes without a bet before the session is considered finished."
+  },
+  "optLimWager": {
+    "message": "Wager limit ($CUR$)",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "optLimWagerSub": {
+    "message": "Flags in the overlay once this session's turnover passes it. Blank = off."
+  },
+  "optLimLoss": {
+    "message": "Loss limit ($CUR$)",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "optLimLossSub": {
+    "message": "Flags once the session is down by this much. Blank = off."
+  },
+  "optLimWin": {
+    "message": "Win limit ($CUR$)",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "optLimWinSub": {
+    "message": "Flags once the session is up by this much — a take-profit marker. All three are in the currency you convert to, compared at the current rate. They can also be set straight from the toolbar popup."
+  },
+  "optLimTime": {
+    "message": "Time limit (minutes)"
+  },
+  "optLimTimeSub": {
+    "message": "Flags once the session has been running this long. Counted from its first bet, not from opening the tab, and it needs no rate — so it applies to every coin. Blank = off."
+  },
+  "optAlerts": {
+    "message": "Alerts"
+  },
+  "optBadge": {
+    "message": "Toolbar badge"
+  },
+  "optBadgeSub": {
+    "message": "Session P/L in your currency on the extension icon while a session is running, the rate when one is not. Green up, red down."
+  },
+  "optNotify": {
+    "message": "Notify when a limit is crossed"
+  },
+  "optNotifySub": {
+    "message": "A desktop notice, once per limit per session. The overlay only reaches you when Stake is the tab you are looking at."
+  },
+  "optCurrentBets": {
+    "message": "Bets counted into the session running now — check these against Stake's own list if a total ever looks wrong."
+  },
+  "optExportBets": {
+    "message": "Export bets"
+  },
+  "optExportSessions": {
+    "message": "Export sessions"
+  },
+  "optClearHistory": {
+    "message": "Clear history"
+  },
+  "optByYear": {
+    "message": "By year"
+  },
+  "optByYearIntro": {
+    "message": "Every session totalled at the rate it closed with, grouped by calendar year by default. Sessions recorded before a rate was ever fetched have no converted figure and are counted separately rather than silently left out."
+  },
+  "optExportYears": {
+    "message": "Export years"
+  },
+  "optDiagnostics": {
+    "message": "Diagnostics"
+  },
+  "optDiagnosticsIntro": {
+    "message": "Failures inside the page are reported here. Empty is what you want to see — if the overlay ever goes quiet or shows stale numbers, this is the first place to look."
+  },
+  "optPinned": {
+    "message": "Pinned amount"
+  },
+  "optNothingPinned": {
+    "message": "Nothing pinned"
+  },
+  "optPinnedSub": {
+    "message": "Use “Pin an amount on the page” in the overlay on Stake."
+  },
+  "optResetAll": {
+    "message": "Reset everything to defaults"
+  },
+  "statusSaved": {
+    "message": "Saved."
+  },
+  "statusReset": {
+    "message": "Reset to defaults."
+  },
+  "statusDiagCleared": {
+    "message": "Diagnostics cleared."
+  },
+  "statusHistoryCleared": {
+    "message": "History cleared."
+  },
+  "statusKeySaved": {
+    "message": "Key saved."
+  },
+  "statusKeyRemoved": {
+    "message": "Key removed — back to keyless."
+  },
+  "statusPasteKey": {
+    "message": "Paste a key first."
+  },
+  "statusNoBets": {
+    "message": "No bets in the current session yet."
+  },
+  "colStarted": {
+    "message": "Started"
+  },
+  "colLength": {
+    "message": "Length"
+  },
+  "colCoin": {
+    "message": "Coin"
+  },
+  "colBets": {
+    "message": "Bets"
+  },
+  "colWl": {
+    "message": "W/L"
+  },
+  "colWagered": {
+    "message": "Wagered"
+  },
+  "colPl": {
+    "message": "P/L"
+  },
+  "colBooks": {
+    "message": "Books"
+  },
+  "colYear": {
+    "message": "Year"
+  },
+  "colSessions": {
+    "message": "Sessions"
+  },
+  "colPlayed": {
+    "message": "Played"
+  },
+  "colWhen": {
+    "message": "When"
+  },
+  "colGame": {
+    "message": "Game"
+  },
+  "colStake": {
+    "message": "Stake"
+  },
+  "colReturned": {
+    "message": "Returned"
+  },
+  "colProfit": {
+    "message": "Profit"
+  },
+  "cardLifetime": {
+    "message": "$COIN$ — lifetime",
+    "placeholders": {
+      "coin": {
+        "content": "$1",
+        "example": "USDT"
+      }
+    }
+  },
+  "optPinnedElement": {
+    "message": "pinned element"
+  },
+  "historyNone": {
+    "message": "No sessions recorded yet."
+  },
+  "historyCount": {
+    "message": "$N$ sessions recorded.",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "historyEmpty": {
+    "message": "Nothing recorded yet — play a session and it will appear here."
+  },
+  "yearEmpty": {
+    "message": "Nothing recorded yet."
+  },
+  "yearUnpriced": {
+    "message": "$N$ sessions closed without a rate and are left out of the converted columns.",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "yearAllPriced": {
+    "message": "Every recorded session carries the rate it closed with."
+  },
+  "diagNone": {
+    "message": "No problems reported."
+  },
+  "diagCount": {
+    "message": "$N$ issues reported.",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "diagClean": {
+    "message": "Nothing to report — the overlay has not thrown since this was last cleared."
+  },
+  "keyKeyless": {
+    "message": "Using the keyless public API — no monthly cap."
+  },
+  "optKeyInstalled": {
+    "message": "Key installed ($PREVIEW$)",
+    "placeholders": {
+      "preview": {
+        "content": "$1",
+        "example": "CG-…a1b2"
+      }
+    }
+  },
+  "optLanguage": {
+    "message": "Language"
+  },
+  "optLanguageSub": {
+    "message": "Automatic follows Chrome's own display language. Applies everywhere at once — popup, options and the overlay on Stake."
+  },
+  "optLangAuto": {
+    "message": "Automatic"
+  },
+  "stakeAccount": {
+    "message": "STAKE ACCOUNT"
+  },
+  "siteAccount": {
+    "message": "$SITE$ ACCOUNT",
+    "placeholders": {
+      "site": {
+        "content": "$1",
+        "example": "DUEL"
+      }
+    }
+  },
+  "rakeback": {
+    "message": "Rakeback"
+  },
+  "vip": {
+    "message": "VIP"
+  },
+  "optStake": {
+    "message": "Casino account"
+  },
+  "optRakeback": {
+    "message": "Read rakeback and VIP progress"
+  },
+  "optRakebackSub": {
+    "message": "Reads the account data the casino's own app already fetches, and shows the rakeback balance converted — VIP progress on Stake, your level on Duel. Watching only: it adds no requests of its own until you ask it to, with the refresh button or the poll below."
+  },
+  "optRakebackPoll": {
+    "message": "Refresh it every minute"
+  },
+  "optRakebackPollSub": {
+    "message": "Repeats one of the site's own requests while the tab is open and focused, instead of waiting for the app to ask. This is automated traffic to the casino's account API from your session — their terms and their bot handling are theirs, and an account flag is the risk you would be taking. Off unless you want it."
+  },
+  "hudRateLine": {
+    "message": "1 USDT = $AMOUNT$",
+    "placeholders": {
+      "amount": {
+        "content": "$1",
+        "example": "€3.05"
+      }
+    }
+  },
+  "rateSourceUnknown": {
+    "message": "unknown source"
+  },
+  "rateKeyed": {
+    "message": "demo key"
+  },
+  "rateUpdated": {
+    "message": "updated $AGE$",
+    "placeholders": {
+      "age": {
+        "content": "$1",
+        "example": "4m ago"
+      }
+    }
+  },
+  "rateFailed": {
+    "message": "last fetch failed"
+  },
+  "rateViaUsd": {
+    "message": "via USD"
+  },
+  "rateSpread": {
+    "message": "incl. $PERCENT$% spread",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "1.5"
+      }
+    }
+  },
+  "feeNote": {
+    "message": "Includes your $PERCENT$% off-ramp spread (mid-price $MID$).",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "1.5"
+      },
+      "mid": {
+        "content": "$2",
+        "example": "3.052"
+      }
+    }
+  },
+  "ageNever": {
+    "message": "never"
+  },
+  "ageJustNow": {
+    "message": "just now"
+  },
+  "ageSeconds": {
+    "message": "$N$s ago",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "30"
+      }
+    }
+  },
+  "ageMinutes": {
+    "message": "$N$m ago",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "4"
+      }
+    }
+  },
+  "ageHours": {
+    "message": "$N$h ago",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "ageDays": {
+    "message": "$N$d ago",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "limitOf": {
+    "message": "of"
+  },
+  "unitMin": {
+    "message": "min"
+  },
+  "winLoss": {
+    "message": "$W$W / $L$L",
+    "placeholders": {
+      "w": {
+        "content": "$1",
+        "example": "3"
+      },
+      "l": {
+        "content": "$2",
+        "example": "7"
+      }
+    }
+  },
+  "sessGaps": {
+    "message": "$N$ gaps — bets scrolled past unseen, so these totals are a floor",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "sessCoinSwitch": {
+    "message": "session is in $SESSION$, wallet is now $WALLET$ — new bets are not counted",
+    "placeholders": {
+      "session": {
+        "content": "$1",
+        "example": "USDT"
+      },
+      "wallet": {
+        "content": "$2",
+        "example": "BTC"
+      }
+    }
+  },
+  "checkAgree": {
+    "message": "Ledger and wallet agree"
+  },
+  "checkMoved": {
+    "message": "after $AMOUNT$ logged in/out",
+    "placeholders": {
+      "amount": {
+        "content": "$1",
+        "example": "+50"
+      }
+    }
+  },
+  "checkIncomplete": {
+    "message": "These figures are incomplete. The wallet moved $WALLET$ $COIN$ but the bets only account for $LEDGER$ — $MISSING$ $COIN$ $DIRECTION$. Bets were placed that this did not see.",
+    "placeholders": {
+      "wallet": {
+        "content": "$1",
+        "example": "-0.4"
+      },
+      "coin": {
+        "content": "$2",
+        "example": "USDT"
+      },
+      "ledger": {
+        "content": "$3",
+        "example": "-0.2"
+      },
+      "missing": {
+        "content": "$4",
+        "example": "0.2"
+      },
+      "direction": {
+        "content": "$5",
+        "example": "of losses are missing from the ledger"
+      }
+    }
+  },
+  "checkMissingLosses": {
+    "message": "of losses are missing from the ledger"
+  },
+  "checkMissingWins": {
+    "message": "of winnings are unrecorded in the ledger"
+  },
+  "hudIncomplete": {
+    "message": "INCOMPLETE — wallet moved $WALLET$ but bets account for $LEDGER$ $COIN$. $MISSING$ unaccounted.",
+    "placeholders": {
+      "wallet": {
+        "content": "$1",
+        "example": "-0.4"
+      },
+      "ledger": {
+        "content": "$2",
+        "example": "-0.2"
+      },
+      "coin": {
+        "content": "$3",
+        "example": "USDT"
+      },
+      "missing": {
+        "content": "$4",
+        "example": "0.2"
+      }
+    }
+  },
+  "fundsLogged": {
+    "message": "$AMOUNT$ logged",
+    "placeholders": {
+      "amount": {
+        "content": "$1",
+        "example": "+50.0000"
+      }
+    }
+  },
+  "optGraph": {
+    "message": "Profit and loss"
+  },
+  "optGraphIntro": {
+    "message": "Where you stood when the session opened is the line across the middle. Green above it is profit, red below it is loss, and each step is one bet. Archived sessions keep a thinned copy of the curve; anything recorded before this existed has none."
+  },
+  "chartCurrent": {
+    "message": "Current session"
+  },
+  "chartEmpty": {
+    "message": "Nothing to draw yet — play a couple of bets and the curve appears here."
+  },
+  "chartBets": {
+    "message": "$N$ bets",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "chartBaseline": {
+    "message": "session start"
+  },
+  "chartNoRate": {
+    "message": "No rate for this session in this currency, so the figures are in coin units."
+  },
+  "chartPeak": {
+    "message": "peak $V$",
+    "placeholders": {
+      "v": {
+        "content": "$1",
+        "example": "+€120.00"
+      }
+    }
+  },
+  "chartTrough": {
+    "message": "trough $V$",
+    "placeholders": {
+      "v": {
+        "content": "$1",
+        "example": "−€80.00"
+      }
+    }
+  },
+  "limitWordWager": {
+    "message": "wager"
+  },
+  "limitWordLoss": {
+    "message": "loss"
+  },
+  "limitWordWin": {
+    "message": "win"
+  },
+  "limitsRateHint": {
+    "message": "At $RATE$ $CUR$/USDT that is about $BACK$.",
+    "placeholders": {
+      "rate": {
+        "content": "$1",
+        "example": "3.052"
+      },
+      "cur": {
+        "content": "$2",
+        "example": "EUR"
+      },
+      "back": {
+        "content": "$3",
+        "example": "wager 330.00 USDT"
+      }
+    }
+  },
+  "colPlMoney": {
+    "message": "P/L ($CUR$)",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "colWageredMoney": {
+    "message": "Wagered ($CUR$)",
+    "placeholders": {
+      "cur": {
+        "content": "$1",
+        "example": "EUR"
+      }
+    }
+  },
+  "whyNoRate": {
+    "message": "This session closed before any rate had been fetched, so it has no converted figure at all."
+  },
+  "whyNoCross": {
+    "message": "This session was recorded with a rate you typed, or in a currency the stored table did not cover, so it can only be read in the currency it closed in."
+  },
+  "whyLegacy": {
+    "message": "Recorded before the extension could convert to more than one currency, so it can only be read in shekels."
+  },
+  "yearLegacy": {
+    "message": "$N$ sessions can only be read in the currency they closed in, and are left out rather than converted at a rate that was never theirs.",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "limitsCleared": {
+    "message": "Your money limits were set in $FROM$ and no exchange rate was available to move them to $TO$, so they have been turned off. Set them again below.",
+    "placeholders": {
+      "from": {
+        "content": "$1",
+        "example": "ILS"
+      },
+      "to": {
+        "content": "$2",
+        "example": "EUR"
+      }
+    }
+  },
+  "limitsConverted": {
+    "message": "Your money limits were converted from $FROM$ to $TO$ when you changed currency: $MOVED$.",
+    "placeholders": {
+      "from": {
+        "content": "$1",
+        "example": "ILS"
+      },
+      "to": {
+        "content": "$2",
+        "example": "EUR"
+      },
+      "moved": {
+        "content": "$3",
+        "example": "₪1,000.00 → €282.00"
+      }
+    }
+  },
+  "optFiscal": {
+    "message": "Tax year starts in"
+  },
+  "optFiscalSub": {
+    "message": "January is the calendar year, which is Israel's tax year. The UK's opens in April and Australia's in July. This changes only how sessions are grouped below — no figure is recalculated."
+  },
+  "creditPrices": {
+    "message": "Prices by"
+  },
+  "creditRates": {
+    "message": "exchange rates by"
+  },
+  "creditLicence": {
+    "message": "MIT licensed, and provided as is with no warranty. It reports; it does not intervene, and nothing here is tax or financial advice."
+  }
+}

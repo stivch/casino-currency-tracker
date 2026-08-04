@@ -1,0 +1,339 @@
+// DOM tests for the bet-table scraper.
+// Run with: node tools/domtest.mjs
+//
+// src/lib/scrape.js is the one piece of this extension that depends on someone
+// else's markup, and it is the source of every number the session shows. It had
+// no coverage at all because it needed a DOM — so this file brings one, in about
+// sixty lines and with no dependencies. The fake implements exactly the four
+// things the scraper touches: querySelectorAll for 'table' / 'thead th' /
+// 'tbody tr', textContent, getAttribute and row.cells.
+//
+// A real browser would be a better test. It would also be a package.json, a
+// download, and a reason not to run this — which is how the file that most
+// needed tests ended up with none.
+
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const { findMyBetsTable, scrapeBets, parseCell, siteFor, betsFromDuel } = require('../src/lib/scrape.js');
+
+let failures = 0;
+
+function check(label, actual, expected) {
+  const ok = JSON.stringify(actual) === JSON.stringify(expected);
+  if (!ok) failures++;
+  console.log(`${ok ? 'ok  ' : 'FAIL'}  ${label}` + (ok ? '' : `\n        got ${JSON.stringify(actual)}, want ${JSON.stringify(expected)}`));
+}
+
+// ------------------------------------------------------------- the fake DOM
+
+const cell = (text) => ({ textContent: String(text) });
+
+/**
+ * @param headers  Column titles, as Stake renders them.
+ * @param rows     [id, ...cells] — a null id means a row with no test hook.
+ */
+function makeTable(headers, rows) {
+  const head = headers.map(cell);
+  const body = rows.map(([id, ...values]) => {
+    const cells = values.map(cell);
+    return {
+      cells,
+      getAttribute: (name) => (name === 'data-test-id' ? id : null),
+    };
+  });
+
+  return {
+    querySelectorAll(selector) {
+      if (selector === 'thead th') return head;
+      if (selector === 'tbody tr') return body;
+      return [];
+    },
+  };
+}
+
+const makeDocument = (tables) => ({
+  querySelectorAll: (selector) => (selector === 'table' ? tables : []),
+});
+
+const MY_BETS = ['Game', 'Time', 'Bet Amount', 'Multiplier', 'Payout'];
+const ALL_BETS = ['Game', 'User', 'Time', 'Bet Amount', 'Multiplier', 'Payout'];
+
+// ------------------------------------------------------------------- tests
+
+console.log('-- finding the table');
+{
+  const mine = makeTable(MY_BETS, []);
+  check('the My Bets table is found', findMyBetsTable(makeDocument([mine]))?.table, mine);
+
+  // Whitespace and case are Stake's business, not ours.
+  const padded = makeTable(['  GAME ', 'Time', 'BET AMOUNT', 'Multiplier', ' Payout'], []);
+  check('headers are matched case- and space-insensitively',
+    Boolean(findMyBetsTable(makeDocument([padded]))), true);
+
+  // The one that matters: All Bets has the same five columns plus a user, and
+  // counting strangers' bets as yours would be far worse than counting nothing.
+  check('the All Bets table is refused', findMyBetsTable(makeDocument([makeTable(ALL_BETS, [])])), null);
+  check('a table with the right count but wrong columns is refused',
+    findMyBetsTable(makeDocument([makeTable(['Game', 'Time', 'Bet Amount', 'Multiplier', 'Player'], [])])), null);
+  check('an unrelated table is refused',
+    findMyBetsTable(makeDocument([makeTable(['Rank', 'Wagered'], [])])), null);
+  check('no table at all is null', findMyBetsTable(makeDocument([])), null);
+
+  // Both on the page at once is the normal case: Stake shows the tabs together.
+  const mixed = makeDocument([makeTable(ALL_BETS, []), mine]);
+  check('My Bets is picked out from beside All Bets', findMyBetsTable(mixed)?.table, mine);
+}
+
+console.log('\n-- reading the rows');
+{
+  const table = makeTable(MY_BETS, [
+    ['id-win', 'Dice', '12:00', '0.20000000', '2.00×', '0.40000000'],
+    ['id-loss', 'Mines', '11:59', '0.20000000', '0.00×', '-0.20000000'],
+    ['id-pending', 'Sports', '11:58', '1.00000000', '—', ''],
+    [null, 'Dice', '11:57', '0.10000000', '1.00×', '0.10000000'],
+  ]);
+  const rows = scrapeBets(table, findMyBetsTable(makeDocument([table])).heads);
+
+  check('rows without a test hook are skipped', rows.length, 3);
+  check('the newest row comes first', rows[0].id, 'id-win');
+  check('a win reads its stake and payout', [rows[0].amount, rows[0].payout], [0.2, 0.4]);
+  check('the game name is trimmed', rows[0].game, 'Dice');
+  // Stake writes a lost stake as a negative payout, not as zero. Everything
+  // downstream depends on that being passed through untouched.
+  check('a loss keeps its negative payout', rows[1].payout, -0.2);
+  check('a settled row is marked settled', [rows[0].settled, rows[1].settled], [true, true]);
+  check('an empty payout is not settled', rows[2].settled, false);
+  check('and carries a null payout rather than a zero', rows[2].payout, null);
+}
+
+console.log('\n-- parseCell');
+{
+  check('eight decimals', parseCell('0.20000000'), 0.2);
+  check('a multiplier', parseCell('1.13×'), 1.13);
+  check('grouped thousands', parseCell('1,234.50'), 1234.5);
+  check('a negative payout', parseCell('-0.20000000'), -0.2);
+  check('an em dash is not a number', parseCell('—'), null);
+  check('blank is not a number', parseCell(''), null);
+  check('missing is not a number', parseCell(undefined), null);
+
+  // The shapes that used to return null — and a null stake became a zero
+  // stake, which became a bet with no turnover and no profit. Anything Stake
+  // puts beside the digits has to be survivable.
+  check('a ticker beside the stake', parseCell('0.20000000 USDT'), 0.2);
+  check('a ticker in front', parseCell('USDT 0.20000000'), 0.2);
+  check('a currency symbol', parseCell('$0.10'), 0.1);
+  check('a shekel sign', parseCell('₪0.35'), 0.35);
+  check('surrounding whitespace and markup text', parseCell('\\n  0.20000000\\n  '), 0.2);
+  check('a negative with a ticker', parseCell('-0.20000000 USDT'), -0.2);
+  check('letters alone are still not a number', parseCell('Mines'), null);
+  check('a pending marker is still not a number', parseCell('- -'), null);
+}
+
+console.log('\n-- which site');
+{
+  check('stake.com', siteFor('stake.com')?.id, 'stake');
+  check('a stake subdomain', siteFor('www.stake.bet')?.id, 'stake');
+  check('duel.com', siteFor('duel.com')?.id, 'duel');
+  check('a duel subdomain', siteFor('www.duel.com')?.id, 'duel');
+  check('case is not the hostname’s business', siteFor('WWW.DUEL.COM')?.id, 'duel');
+
+  // The one that matters: a lookalike host must not be handed the adapter for
+  // the real one, or the extension starts posting reads at somebody else's API.
+  check('a lookalike is not Duel', siteFor('notduel.com'), null);
+  check('a lookalike is not Stake', siteFor('fakestake.com'), null);
+  check('duel.com as a subdomain of somewhere else', siteFor('duel.com.evil.net'), null);
+  check('anywhere else', siteFor('example.com'), null);
+  check('nothing at all', siteFor(''), null);
+
+  check('Stake reads its ledger off a table', siteFor('stake.com')?.ledger, 'table');
+  check('Duel reads its ledger off an API', siteFor('duel.com')?.ledger, 'api');
+}
+
+console.log('\n-- Duel: a round is not a row');
+{
+  // Verbatim from a live /api/v2/user/transactions page. A won mines round is
+  // TWO lines under one `data.id`: the wager, negative, and the return,
+  // positive. Reading them as two bets doubles the turnover and invents a
+  // profit out of the sign — which is exactly what this used to do.
+  const wonRound = [
+    {
+      key: 'mines_rounds', type: 'Mines Rounds', currency: 105,
+      amount_currency: '0.717448757701796187',
+      data: { id: 50065914, status: 1, amount_currency: '0.660713570656308800', amount_won: '0.717448757701796187' },
+    },
+    {
+      key: 'mines_rounds', type: 'Mines Rounds', currency: 105,
+      amount_currency: '-0.660713570656308800',
+      data: { id: 50065914, status: 1, amount_currency: '0.660713570656308800', amount_won: '0.717448757701796187' },
+    },
+  ];
+
+  const { rows } = betsFromDuel({ data: wonRound });
+
+  check('two ledger lines are one bet', rows.length, 1);
+  check('identified by the round, not the line', rows[0].id, 'mines_rounds:50065914');
+  check('the stake is the stake, not the line movement', rows[0].amount, 0.6607135706563088);
+  check('and the payout is the gross return', rows[0].payout, 0.717448757701796187);
+  check('so the profit is the profit',
+    Number((rows[0].payout - rows[0].amount).toFixed(9)), 0.056735187);
+  check('a cashed-out round is settled', rows[0].settled, true);
+  check('and named for the game', rows[0].game, 'Mines Rounds');
+
+  // Either line alone prices the whole round, which is what makes a page
+  // boundary between the two harmless.
+  check('the return line alone is enough', betsFromDuel({ data: [wonRound[0]] }).rows[0].amount, 0.6607135706563088);
+  check('the wager line alone is too', betsFromDuel({ data: [wonRound[1]] }).rows[0].payout, 0.717448757701796187);
+}
+
+console.log('\n-- Duel: losses and open rounds');
+{
+  // A lost round writes one line: the wager. status 2 is LOST.
+  const lost = betsFromDuel({
+    data: [{
+      key: 'mines_rounds', type: 'Mines Rounds', currency: 105,
+      amount_currency: '-1.611740679934329000',
+      data: { id: 50065582, status: 2, amount_currency: '1.611740679934329000', amount_won: '0.000000000000000000' },
+    }],
+  }).rows[0];
+
+  check('a loss keeps its whole stake', lost.amount, 1.611740679934329);
+  check('and returns nothing', lost.payout, 0);
+  check('and is settled — a zero return is a result, not a pending one', lost.settled, true);
+
+  // status 0 is ACTIVE: the wager line is written when the bet is placed, and
+  // the round has not resolved. Counting it would book an open grid as a total
+  // loss until the cashout landed.
+  const open = betsFromDuel({
+    data: [{
+      key: 'mines_rounds', type: 'Mines Rounds', currency: 105,
+      amount_currency: '-1.000000000000000000',
+      data: { id: 50065999, status: 0, amount_currency: '1.000000000000000000', amount_won: '0.000000000000000000' },
+    }],
+  }).rows[0];
+  check('an active round is not settled', open.settled, false);
+
+  // Blackjack is the exception: its hand runs 0..4 before FINISHED=5, so
+  // "not zero" would call a hand mid-deal a loss.
+  const bj = (status) => betsFromDuel({
+    data: [{
+      key: 'blackjack_rounds', type: 'Blackjack Round', currency: 105,
+      amount_currency: '1.221331251063659200',
+      data: { id: 771, status, amount_currency: '0.610665625531829600', amount_won: '1.221331251063659200' },
+    }],
+  }).rows[0].settled;
+
+  check('a blackjack hand mid-deal is not settled', [bj(1), bj(2), bj(3), bj(4)], [false, false, false, false]);
+  check('a finished one is', bj(5), true);
+}
+
+console.log('\n-- Duel: provider slots, which send no round figures');
+{
+  // `data` on a slot line holds nothing but an id, so the stake and the return
+  // have to come off the lines themselves.
+  const spin = [
+    {
+      key: 'game_round_bets', type: 'Le Fisherman', currency: 105,
+      amount_currency: '2.332565822404645110', data: { id: 280717558 },
+    },
+    {
+      key: 'game_round_bets', type: 'Le Fisherman', currency: 105,
+      amount_currency: '-6.006607267994794274', data: { id: 280717558 },
+    },
+  ];
+
+  const { rows } = betsFromDuel({ data: spin });
+  check('a spin is one bet', rows.length, 1);
+  check('staked what was debited', rows[0].amount, 6.006607267994794274);
+  check('returned what was credited', rows[0].payout, 2.332565822404645110);
+  check('and counts as finished — slots have no open state', rows[0].settled, true);
+  check('named for the game, not the key', rows[0].game, 'Le Fisherman');
+
+  // The one case a page boundary can still break: a credit whose wager line
+  // fell off the end. Booking it would be a stake-free win — a pure invented
+  // profit — so it is dropped instead.
+  check('an orphaned credit is dropped, not booked as free money',
+    betsFromDuel({ data: [spin[0]] }).rows, []);
+  check('an orphaned debit is a bet, since the worst case is a loss that corrects',
+    betsFromDuel({ data: [spin[1]] }).rows[0].amount, 6.006607267994794274);
+}
+
+console.log('\n-- Duel: what is not a bet');
+{
+  const { rows } = betsFromDuel({
+    data: [
+      {
+        key: 'mines_rounds', type: 'Mines Rounds', currency: 105, amount_currency: '-1',
+        data: { id: 1, status: 2, amount_currency: '1', amount_won: '0' },
+      },
+      {
+        key: 'user_rakeback_balances', type: 'Rakeback Claim', currency: 105,
+        amount_currency: '3.000000000000000000', data: { id: 9 },
+      },
+      {
+        key: 'withdrawal_invoices', type: 'Crypto Withdrawal', currency: 105,
+        amount_currency: '-50.000000000000000000', data: { id: 9 },
+      },
+    ],
+  });
+
+  // A withdrawal booked as a losing bet would be far worse than a bet missed.
+  check('a claim and a withdrawal are not bets', rows.map((r) => r.id), ['mines_rounds:1']);
+
+  check('a line with no round id is skipped',
+    betsFromDuel({ data: [{ key: 'dice_rounds', currency: 105, amount_currency: '-1', data: {} }] }).rows, []);
+  check('an empty feed is empty', betsFromDuel({ data: [] }), { rows: [], currency: null, mixed: 0 });
+  check('nothing at all is empty', betsFromDuel(null), { rows: [], currency: null, mixed: 0 });
+}
+
+console.log('\n-- Duel: one coin per batch');
+{
+  const round = (id, currency, stake, won) => ({
+    key: 'dice_rounds', type: 'Dice Rounds', currency,
+    amount_currency: String(-stake),
+    data: { id, status: 2, amount_currency: String(stake), amount_won: String(won) },
+  });
+
+  // The feed mixes coins; a session is denominated in exactly one. The newest
+  // bet decides, and the rest sit out rather than being counted at its rate.
+  const { rows, currency, mixed } = betsFromDuel({
+    data: [round(1, 105, 1, 2), round(2, 101, 0.0001, 0), round(3, 105, 3, 0)],
+  });
+
+  check('the newest bet’s coin wins', currency, 'USDT');
+  check('only that coin’s rounds come back', rows.map((r) => r.id), ['dice_rounds:1', 'dice_rounds:3']);
+  check('and the rest are counted, not silently gone', mixed, 1);
+
+  check('an unknown currency id is null, not a guess',
+    betsFromDuel({ data: [round(4, 999, 1, 0)] }).currency, null);
+}
+
+console.log('\n-- Duel: the whole page adds up');
+{
+  // Three won rounds and one lost, as six ledger lines in feed order. The
+  // figures the session shows are Σstake and Σreturn − Σstake, and the point of
+  // this test is that they come out of the ledger unchanged.
+  const won = (id, stake, ret) => ([
+    { key: 'mines_rounds', type: 'Mines Rounds', currency: 105, amount_currency: String(ret),
+      data: { id, status: 1, amount_currency: String(stake), amount_won: String(ret) } },
+    { key: 'mines_rounds', type: 'Mines Rounds', currency: 105, amount_currency: String(-stake),
+      data: { id, status: 1, amount_currency: String(stake), amount_won: String(ret) } },
+  ]);
+  const lost = (id, stake) => ([
+    { key: 'mines_rounds', type: 'Mines Rounds', currency: 105, amount_currency: String(-stake),
+      data: { id, status: 2, amount_currency: String(stake), amount_won: '0' } },
+  ]);
+
+  const { rows } = betsFromDuel({ data: [...won(3, 2, 2.5), ...won(2, 1, 1.5), ...lost(1, 4)] });
+
+  const wagered = rows.reduce((sum, r) => sum + r.amount, 0);
+  const profit = rows.reduce((sum, r) => sum + Math.max(r.payout, 0) - r.amount, 0);
+
+  check('three rounds, not five lines', rows.length, 3);
+  check('newest first', rows.map((r) => r.id), ['mines_rounds:3', 'mines_rounds:2', 'mines_rounds:1']);
+  check('wagered is the sum of the stakes', wagered, 7);
+  check('and the P/L is down by the lost stake less the two wins', profit, -3);
+}
+
+console.log(failures ? `\n${failures} FAILURE(S)` : '\nall passed');
+process.exit(failures ? 1 : 0);

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>USDT converter</title>
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body class="popup">
+
+  <div class="section">
+    <div class="rate">
+      <span class="dot" id="dot"></span>
+      <span class="rate-value" id="rateValue">—</span>
+      <span class="rate-unit" id="rateUnit">per USDT</span>
+    </div>
+    <span class="rate-meta" id="rateMeta">loading…</span>
+  </div>
+
+  <div class="section" id="stakeSection" hidden>
+    <div class="sess-top">
+      <span class="sess-label" data-i18n="stakeAccount">STAKE ACCOUNT</span>
+      <span class="sess-dur" id="stakeAge"></span>
+      <button class="ghost" id="refreshStake" data-i18n="popRefreshAccount">Refresh</button>
+    </div>
+    <div class="sess-grid two">
+      <div><span data-i18n="rakeback">Rakeback</span><b id="rakeVal">—</b></div>
+      <div><span data-i18n="vip">VIP</span><b id="vipVal">—</b></div>
+    </div>
+    <div class="vip-bar" id="vipBar" hidden><i></i></div>
+    <p class="hint" id="stakeHint" hidden></p>
+  </div>
+
+  <div class="section" id="sessionSection" hidden>
+    <div class="sess-top">
+      <span class="sess-label" data-i18n="popSession">SESSION</span>
+      <span class="sess-dur" id="sessDur"></span>
+      <button class="ghost" id="resetSession" data-i18n="popReset">Reset</button>
+    </div>
+    <div class="sess-grid">
+      <div><span data-i18n="popPl">P/L</span><b id="sessPl">—</b></div>
+      <div><span data-i18n="popWagered">Wagered</span><b id="sessWag">—</b></div>
+      <div><span data-i18n="popBets">Bets</span><b id="sessBets">—</b></div>
+    </div>
+    <svg class="spark" id="spark" viewBox="0 0 280 46" preserveAspectRatio="none" hidden aria-hidden="true"></svg>
+    <p class="sess-check" id="sessCheck" hidden></p>
+    <div class="funds" id="fundsRow" hidden>
+      <label for="fundsDelta" id="fundsLabel">Money in / out</label>
+      <input type="text" id="fundsDelta" placeholder="+0.00" inputmode="decimal" autocomplete="off">
+      <button class="ghost" id="fundsLog" data-i18n="popFundsLog">Log</button>
+    </div>
+    <p class="sess-limit" id="sessLimit" hidden></p>
+    <p class="sess-warn" id="sessWarn" hidden></p>
+  </div>
+
+  <div class="section" id="limitsSection" hidden>
+    <div class="sess-top">
+      <span class="sess-label" data-i18n="popLimits">SESSION LIMITS</span>
+      <span class="saved" id="limitsSaved" data-i18n="popSaved">saved</span>
+    </div>
+    <div class="limit-edit">
+      <div>
+        <label for="limitWager" id="limWagerLabel">Wager</label>
+        <input type="text" id="limitWager" placeholder="off" data-i18n-ph="popOff" inputmode="decimal" autocomplete="off">
+      </div>
+      <div>
+        <label for="limitLoss" id="limLossLabel">Loss</label>
+        <input type="text" id="limitLoss" placeholder="off" data-i18n-ph="popOff" inputmode="decimal" autocomplete="off">
+      </div>
+      <div>
+        <label for="limitWin" id="limWinLabel">Win</label>
+        <input type="text" id="limitWin" placeholder="off" data-i18n-ph="popOff" inputmode="decimal" autocomplete="off">
+      </div>
+      <div>
+        <label for="limitMinutes" data-i18n="popLimTime">Time min</label>
+        <input type="text" id="limitMinutes" placeholder="off" data-i18n-ph="popOff" inputmode="numeric" autocomplete="off">
+      </div>
+    </div>
+    <p class="hint" id="limitsHint"></p>
+  </div>
+
+  <div class="section">
+    <div class="convert-row">
+      <label for="usdt">USDT</label>
+      <input type="text" id="usdt" inputmode="decimal" placeholder="0.00" autocomplete="off">
+    </div>
+    <div class="convert-row">
+      <label for="fiat" id="fiatLabel">ILS</label>
+      <input type="text" id="fiat" inputmode="decimal" placeholder="0.00" autocomplete="off">
+    </div>
+    <p class="swap" id="feeNote"></p>
+  </div>
+
+  <div class="section">
+    <div class="row">
+      <span class="grow"><span class="label" data-i18n="popOverlay">Overlay on Stake</span>
+        <span class="sub" data-i18n="popOverlaySub">Floating readout + pinned balance</span></span>
+      <label class="switch"><input type="checkbox" id="showHud"><span></span></label>
+    </div>
+    <div class="row">
+      <span class="grow"><span class="label" data-i18n="popHover">Convert on hover</span>
+        <span class="sub" data-i18n="popHoverSub">Tooltip over any amount</span></span>
+      <label class="switch"><input type="checkbox" id="hoverTooltip"><span></span></label>
+    </div>
+    <div class="row">
+      <span class="grow"><span class="label" data-i18n="popInline">Annotate amounts inline</span>
+        <span class="sub" data-i18n="popInlineSub">Appends the converted figure after labelled amounts</span></span>
+      <label class="switch"><input type="checkbox" id="inlineAnnotate"><span></span></label>
+    </div>
+    <button class="wide" id="refresh" data-i18n="popRefresh">Refresh rate now</button>
+  </div>
+
+  <div class="section footer">
+    <a href="#" id="openOptions" data-i18n="popAllSettings">All settings</a>
+    <span class="saved" id="saved" data-i18n="popSaved">saved</span>
+  </div>
+
+  <!-- Attribution, which both providers' free tiers require, and which is
+       simply true: neither of these numbers is ours. -->
+  <p class="credit">
+    <span data-i18n="creditPrices">Prices by</span>
+    <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a> ·
+    <span data-i18n="creditRates">exchange rates by</span>
+    <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">exchangerate-api.com</a>
+  </p>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
