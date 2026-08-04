@@ -3,7 +3,7 @@ import { applyI18n, t, useMessages } from './lib/i18n.js';
 import { currencySymbol, formatMoney } from './lib/format.js';
 import { fiscalYearOf, restate } from './lib/session.js';
 import { limitSwitchText } from './lib/notices.js';
-import { DEFAULTS, TARGET_CURRENCIES, mirrorOrigins, sanitizeMirrors } from './lib/settings.js';
+import { CASINOS, DEFAULTS, OPTIONAL_DOMAINS, TARGET_CURRENCIES, casinoForDomain, mirrorOrigins } from './lib/settings.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -131,7 +131,7 @@ function render() {
 // which of the two it has, because "added it and nothing happens" is otherwise
 // indistinguishable from a broken extension.
 
-const SITE_LABELS = { stake: 'Stake', duel: 'Duel' };
+const SITE_LABELS = Object.fromEntries(Object.values(CASINOS).map((c) => [c.id, c.name]));
 
 async function mirrorGranted(host) {
   try {
@@ -141,7 +141,30 @@ async function mirrorGranted(host) {
   }
 }
 
+/** What this build supports, said plainly — it is a closed list, so it can be. */
+function renderSupported() {
+  const lines = Object.values(CASINOS).map((casino) => {
+    const domains = [...casino.builtIn, ...casino.optional].join(', ');
+    return `<strong>${casino.name}</strong> — ${domains}`;
+  });
+  $('sitesSupported').innerHTML = lines.join('<br>');
+}
+
+/** The switchable domains not already on. Empty in a build that ships none. */
+function renderMirrorPicker() {
+  const on = new Set((state?.settings?.mirrors || []).map((m) => m.host));
+  const available = OPTIONAL_DOMAINS.filter((entry) => !on.has(entry.host));
+
+  $('mirrorAdd').hidden = available.length === 0;
+  $('mirrorHost').innerHTML = available
+    .map((entry) => `<option value="${entry.host}">${entry.host} — ${SITE_LABELS[entry.site]}</option>`)
+    .join('');
+}
+
 async function renderMirrors() {
+  renderSupported();
+  renderMirrorPicker();
+
   const mirrors = state?.settings?.mirrors || [];
   const list = $('mirrorList');
 
@@ -180,36 +203,31 @@ function mirrorNote(text, tone = '') {
 }
 
 async function addMirror() {
-  const host = $('mirrorHost').value.trim().toLowerCase();
-  const site = $('mirrorSite').value;
-  if (!host) return mirrorNote(t('mirrorTypeHost', 'Type a domain first, like example.com.'));
+  const host = $('mirrorHost').value;
 
-  // Validated with the same function the service worker uses, so what is
-  // accepted here and what is stored cannot disagree.
-  const [clean] = sanitizeMirrors([{ host, site }]);
-  if (!clean) {
-    return mirrorNote(t('mirrorBadHost',
-      `“${host}” is not a plain domain — no https://, no path, no wildcard.`, [host]), 'warn');
-  }
+  // The picker only ever offers registry domains, but the registry is asked
+  // again anyway: this is the one place a domain turns into a permission
+  // request, and it should not trust the markup it came from.
+  const site = casinoForDomain(host);
+  if (!site) return mirrorNote(t('mirrorUnknown', 'That domain is not one this version supports.'), 'warn');
 
   const existing = state.settings.mirrors || [];
-  if (existing.some((m) => m.host === clean.host)) {
-    return mirrorNote(t('mirrorAlready', `${clean.host} is already on the list.`, [clean.host]));
+  if (existing.some((m) => m.host === host)) {
+    return mirrorNote(t('mirrorAlready', `${host} is already on the list.`, [host]));
   }
 
   // Must happen inside the click, and before the setting is written: a host
   // saved without permission is a row that looks added and does nothing.
   let granted = false;
   try {
-    granted = await chrome.permissions.request({ origins: mirrorOrigins(clean.host) });
+    granted = await chrome.permissions.request({ origins: mirrorOrigins(host) });
   } catch (error) {
     return mirrorNote(String(error?.message || error), 'warn');
   }
   if (!granted) return mirrorNote(t('mirrorDeclined', 'Chrome did not grant access, so nothing was added.'), 'warn');
 
-  await patch({ mirrors: [...existing, clean] });
-  $('mirrorHost').value = '';
-  mirrorNote(t('mirrorAdded', `Running on ${clean.host} now. Reload any tab already open there.`, [clean.host]), 'good');
+  await patch({ mirrors: [...existing, { host, site }] });
+  mirrorNote(t('mirrorAdded', `Running on ${host} now. Reload any tab already open there.`, [host]), 'good');
 }
 
 async function removeMirror(host) {
@@ -760,10 +778,6 @@ for (const id of LIMITS) {
 }
 
 $('addMirror').addEventListener('click', () => { addMirror().catch((e) => mirrorNote(String(e?.message || e), 'warn')); });
-
-$('mirrorHost').addEventListener('keydown', (event) => {
-  if (event.key === 'Enter') $('addMirror').click();
-});
 
 $('clearDiagnostics').addEventListener('click', async () => {
   state = await send({ type: 'clearDiagnostics' });

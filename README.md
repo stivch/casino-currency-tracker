@@ -616,28 +616,29 @@ moves.
 
 ## Other domains
 
-Built in: `stake.com`, `stake.bet`, `stake.games`, `stake.us`, and `duel.com`, `duel.limited`,
-`duel.vip`, `duel.net` — each with its subdomains.
+**The extension runs on a closed list of domains and nowhere else.** Today that is
+`stake.com`, `stake.bet`, `stake.games`, `stake.us`, `duel.com`, `duel.limited`, `duel.vip` and
+`duel.net`, each with its subdomains.
 
-**Anything else is added from Options → *Other domains*, with no code edit and no reload.** Type
-the domain, say which casino it is, and Chrome asks whether to allow it. Removing the row hands
-the permission back.
+That list lives in one place — `CASINOS` in `src/lib/settings.js` — and the manifest is checked
+against it by `tools/selftest.mjs`, so a domain one allows and the other does not fails the
+build rather than shipping as a switch that quietly does nothing.
 
-You have to say which casino, because it cannot be guessed and guessing wrong is the quietest
-failure this extension has: a Duel domain read as Stake watches for a bet table that does not
-exist, so session tracking is simply dead and nothing reports a fault. That is also why the
-built-in list is matched first — a domain the extension already knows cannot be reassigned by a
-settings entry.
+The limit is deliberate. What the extension knows about a casino is a set of assumptions about
+that one site's bet ledger, its price table and its wallet chip. Pointing those at a site they
+were not written for does not produce an error; it produces confident wrong numbers. So there is
+no "add any domain" box, and **support for a new casino is a new version, not a setting**.
 
-The permission is per machine. The list itself follows your Chrome profile, so on a second
-machine a mirror appears in the list marked as not yet allowed, and re-adding it asks for
-access there.
+A casino may also declare *switchable* domains — extra domains it answers on that ship switched
+off. Those appear in Options → *Sites*, and turning one on asks Chrome for access to that host
+and registers the same two content scripts the manifest declares (the page-world reader at
+`document_start`, the scraper plus overlay at `document_idle`) via
+`chrome.scripting.registerContentScripts`. The permission is per machine, and removing the entry
+hands it back. This build ships none — both casinos' known domains are built in.
 
-Under the hood this registers the same two content scripts the manifest declares — the
-page-world reader at `document_start` and the scraper plus overlay at `document_idle` — via
-`chrome.scripting.registerContentScripts`. See [docs/ADAPTERS.md](docs/ADAPTERS.md) for what an
-adapter has to guarantee, and why a genuinely new casino needs its traffic captured first rather
-than a hostname added here.
+Next: BC.Game and Roobet. Each needs its own adapter before its domains can be listed;
+[docs/ADAPTERS.md](docs/ADAPTERS.md) is the contract, and it starts with capturing real traffic
+rather than adding a hostname.
 
 ## Development
 

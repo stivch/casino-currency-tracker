@@ -146,19 +146,14 @@ export const DEFAULTS = {
   // Set to a number to ignore the providers entirely and use your own rate.
   manualRate: null,
 
-  // Extra hostnames the casinos answer on, as [{host, site}].
+  // Which of the switchable domains in CASINOS the user has turned on, as
+  // [{host, site}].
   //
-  // Both sites run the same app on several domains, and which ones exist
-  // changes without notice — so they are a setting rather than a list baked
-  // into the manifest. Each entry names which casino it is: guessing from a
-  // hostname is exactly the mistake this avoids, since a Duel mirror read as
-  // Stake watches for a bet table that does not exist and reports nothing
-  // wrong.
-  //
-  // A host here does nothing on its own. The extension only runs on it once
-  // the browser has been asked for permission, from the options page, and that
-  // permission is per-machine — so this list syncing between machines does not
-  // carry the access with it.
+  // Only ever domains from that registry — the list is an allowlist, not a
+  // place to name a site. A domain here still does nothing until Chrome has
+  // been asked for access to it from the options page, and that permission is
+  // per-machine, so this list following the profile does not carry the access
+  // with it.
   mirrors: [],
 
   // The element pinned by the picker, so the HUD can read a live balance.
@@ -170,29 +165,64 @@ export const DEFAULTS = {
   hudBottom: 16,
 };
 
-/** Casinos a mirror may be declared as. Anything else is not an adapter. */
-export const MIRROR_SITES = ['stake', 'duel'];
-
-/** More than anyone has, and low enough that the list stays reviewable. */
-const MIRROR_LIMIT = 20;
-
 /**
- * A bare hostname: no scheme, no port, no path, no wildcard, at least one dot.
+ * The casinos this build understands, and every domain each answers on.
  *
- * Deliberately strict. Every accepted value here becomes a host permission
- * request and a content-script match pattern, and "*" in the wrong place is
- * the difference between one casino and every site the user visits.
+ * One list, and it is a closed one. The extension will never run anywhere that
+ * is not named here — not on a domain a user types, not on one a page claims
+ * to be. That is a deliberate limit rather than a missing feature: an adapter
+ * is a set of assumptions about one site's ledger, and pointing it at a site it
+ * was not written for does not fail, it produces confident wrong numbers.
+ *
+ * `builtIn` domains are matched by the manifest and work on install.
+ * `optional` domains ship switched off; the user turns one on from Options and
+ * Chrome asks for access to it then. Both lists must be mirrored exactly in
+ * manifest.json — `content_scripts.matches` and `optional_host_permissions`
+ * respectively — and tools/domtest.mjs asserts they agree, because a domain
+ * this file allows and the manifest does not is a switch that appears to work
+ * and does nothing.
+ *
+ * Adding a casino: an adapter first (see docs/ADAPTERS.md), then an entry here.
+ * Adding a domain to a casino that already works: an entry here and in the
+ * manifest, and nothing else.
  */
-const HOSTNAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+export const CASINOS = {
+  stake: {
+    id: 'stake',
+    name: 'Stake',
+    builtIn: ['stake.com', 'stake.bet', 'stake.games', 'stake.us'],
+    optional: [],
+  },
+  duel: {
+    id: 'duel',
+    name: 'Duel',
+    builtIn: ['duel.com', 'duel.limited', 'duel.vip', 'duel.net'],
+    optional: [],
+  },
+};
 
-/** The origins a mirror needs before the extension may run on it. */
+/** Every domain that can be switched on, as {host, site}. */
+export const OPTIONAL_DOMAINS = Object.values(CASINOS)
+  .flatMap((casino) => casino.optional.map((host) => ({ host, site: casino.id })));
+
+/** Which casino a switchable domain belongs to, or null if it is not one. */
+export function casinoForDomain(host) {
+  const wanted = String(host || '').trim().toLowerCase();
+  return OPTIONAL_DOMAINS.find((entry) => entry.host === wanted)?.site || null;
+}
+
+/** The origins a domain needs before the extension may run on it. */
 export function mirrorOrigins(host) {
   return [`https://${host}/*`, `https://*.${host}/*`];
 }
 
 /**
- * Clean a mirror list into something safe to register content scripts against.
- * Anything that does not survive is dropped rather than corrected.
+ * Reduce a stored list to domains this build actually supports.
+ *
+ * An allowlist, not a validator: the question is never "is this a well-formed
+ * hostname" but "is this one of ours". Which casino a domain is comes from the
+ * registry rather than from the stored entry, so a hand-edited settings file
+ * cannot hand Duel's adapter a Stake domain.
  */
 export function sanitizeMirrors(list) {
   const out = [];
@@ -200,15 +230,12 @@ export function sanitizeMirrors(list) {
 
   for (const entry of Array.isArray(list) ? list : []) {
     const host = String(entry?.host || '').trim().toLowerCase().replace(/\.$/, '');
-    const site = String(entry?.site || '').trim().toLowerCase();
+    const site = casinoForDomain(host);
 
-    if (!HOSTNAME_RE.test(host)) continue;
-    if (!MIRROR_SITES.includes(site)) continue;
-    if (seen.has(host)) continue;
+    if (!site || seen.has(host)) continue;
 
     seen.add(host);
     out.push({ host, site });
-    if (out.length >= MIRROR_LIMIT) break;
   }
 
   return out;

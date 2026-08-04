@@ -5,10 +5,13 @@ The version in `manifest.json` is the single source of truth; a release is a
 
 ## Unreleased
 
-- **Other domains.** Duel's `duel.limited`, `duel.vip` and `duel.net` now work
-  out of the box, and any further domain can be added from Options with no code
-  edit and no reload — the extension asks Chrome for access to that host and
-  registers its content scripts at runtime.
+- **Sites are a closed list.** `CASINOS` in `src/lib/settings.js` names every
+  casino and every domain it answers on; the extension runs nowhere else, and
+  the manifest is checked against the registry by the test suite. Duel's
+  `duel.limited`, `duel.vip` and `duel.net` now work out of the box.
+- A casino may declare switchable domains that ship off and are turned on from
+  Options → *Sites*, which asks Chrome for access to that host and registers
+  the content scripts at runtime. This build ships none.
 - Fixes a silent failure: an unrecognised Duel domain fell through to the Stake
   adapter, so it watched for a bet table that does not exist and session
   tracking was dead with no fault reported anywhere.

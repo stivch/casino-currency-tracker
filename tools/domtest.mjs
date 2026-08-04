@@ -159,8 +159,13 @@ console.log('\n-- which site');
   check('an unrelated duel TLD is not Duel', siteFor('duel.example'), null);
 }
 
-console.log('\n-- user-added mirrors');
+console.log('\n-- switched-on domains');
 {
+  // Which domains may be switched on at all is settled in lib/settings.js
+  // against a closed registry; siteFor takes whatever list it is handed. These
+  // check the routing rather than the allowlist, so they use hosts that are
+  // deliberately not in the registry — if the two layers ever disagree, this
+  // is the one that still has to be safe.
   const mirrors = [{ host: 'duel.example', site: 'duel' }, { host: 'mirror.test', site: 'stake' }];
 
   check('a declared Duel mirror is Duel', siteFor('duel.example', mirrors)?.id, 'duel');

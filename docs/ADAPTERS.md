@@ -13,11 +13,17 @@ prevents is silent: a wrong number that looks exactly like a right one.
 
 | # | File | What lives there |
 |---|---|---|
-| 1 | `manifest.json` | `content_scripts` matches, in **both** entries — the page-world reader and the overlay are separate injections |
-| 2 | `src/lib/scrape.js` | The `SITES` table, `siteFor()`, and the ledger reader for a markup-based site |
-| 3 | `src/lib/stakebridge.js` | The page-world adapter: which requests to recognise and what to pull out of them |
-| 4 | `src/lib/rates.js` | The reader that turns the site's price table into target-currency-per-coin |
-| 5 | `src/background.js` | `RATE_READERS` and `SITE_NAMES` — dispatch and the human label |
+| 1 | `src/lib/settings.js` | `CASINOS` — the closed registry of casinos and every domain each answers on |
+| 2 | `manifest.json` | `content_scripts` matches and `optional_host_permissions`, both mirroring the registry |
+| 3 | `src/lib/scrape.js` | The `SITES` table, `siteFor()`, and the ledger reader for a markup-based site |
+| 4 | `src/lib/stakebridge.js` | The page-world adapter: which requests to recognise and what to pull out of them |
+| 5 | `src/lib/rates.js` | The reader that turns the site's price table into target-currency-per-coin |
+| 6 | `src/background.js` | `RATE_READERS` and `SITE_NAMES` — dispatch and the human label |
+
+The registry is the gate: the extension will not run on a domain that is not in it, and
+`tools/selftest.mjs` fails the build if the registry and the manifest disagree. Adding a domain
+to a casino that already works is an edit to those two files and nothing else. Adding a casino
+is everything below first.
 
 A sixth, implicit: `tools/domtest.mjs` and `tools/bridgetest.mjs`. An adapter with no fixture is
 not finished. These are the only tests that can catch a ledger reader breaking, and a ledger
@@ -130,12 +136,14 @@ the overlay going quiet with stale numbers on it while everything looks fine.
 
 These are different jobs and it is worth not confusing them.
 
-**A mirror runs the identical app on another hostname.** Stake answers on `stake.com`,
-`stake.bet`, `stake.games` and `stake.us`; Duel also answers on `duel.limited`, `duel.vip` and
-`duel.net`. The adapter is already correct — only the matching is missing. The current failure
-mode is bad: `siteFor()` returns `null` for an unmatched host and `content.js` falls back to
-Stake, and `stakebridge.js` tests only for `duel.com`, so **a Duel mirror is silently treated as
-Stake**.
+**A mirror runs the identical app on another hostname.** The adapter is already correct — only
+the matching is missing, so it is two lines in `CASINOS` and the manifest. Put it in `builtIn`
+if it should work on install, or `optional` if it should ship switched off and be turned on from
+Options.
+
+Verify it really is the same app before adding it. A brand's regional domain usually is; a
+domain that merely carries the brand's name may be a different build, an affiliate wrapper, or
+somebody else entirely — and the adapter will not say so, it will just start producing numbers.
 
 **A new casino needs its traffic captured before a line is written.** Its ledger shape, its id
 field, its settled/unsettled marker, its price table orientation and its non-bet rows are all

@@ -316,20 +316,20 @@
     </div>
   </div>
 
-  <h2 data-i18n="optMirrors">Other domains</h2>
-  <p class="hint" data-i18n="optMirrorsIntro">Both casinos answer on more than one domain, and which ones exist changes
-    without notice. Add one here and the extension will run on it as well. Say which casino it is — a Duel domain read
-    as Stake looks for a bet table that does not exist and reports nothing wrong, so this is not guessed from the name.
-    Chrome will ask you to allow access; that permission is per-machine and you can withdraw it at any time from
-    Chrome's own extension settings.</p>
+  <h2 data-i18n="optMirrors">Sites</h2>
+  <p class="hint" id="sitesSupported"></p>
+  <p class="hint" data-i18n="optMirrorsIntro">The extension runs only on the domains listed here and nowhere else. That
+    is a limit on purpose: what it knows about a casino is a set of assumptions about that one site's bet ledger, and
+    pointing them at a site they were not written for does not fail — it produces confident wrong numbers. Support for
+    a new casino is a new version, not a setting.</p>
 
-  <div class="group">
+  <div id="mirrorAdd" class="group" hidden>
     <div class="row">
-      <input type="text" id="mirrorHost" class="grow-input" placeholder="example.com" autocomplete="off" spellcheck="false">
-      <select id="mirrorSite">
-        <option value="stake">Stake</option>
-        <option value="duel">Duel</option>
-      </select>
+      <span class="grow"><span class="label" data-i18n="optMirrorMore">Also run on</span>
+        <span class="sub" data-i18n="optMirrorMoreSub">Extra domains these casinos answer on, switched off until you
+          pick one. Chrome asks to allow access; you can withdraw it at any time from Chrome's own extension
+          settings.</span></span>
+      <select id="mirrorHost"></select>
       <button id="addMirror" data-i18n="optMirrorAdd">Add</button>
     </div>
   </div>
