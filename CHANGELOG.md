@@ -5,6 +5,14 @@ The version in `manifest.json` is the single source of truth; a release is a
 
 ## Unreleased
 
+- **Double-counting guard.** On Stake two readers see every original — the game
+  endpoints and the bet table — and it all rests on them agreeing about a bet's
+  id. They do agree, as far as anything has shown; but if they ever stop, every
+  figure silently doubles and a doubled total looks entirely reasonable. Each
+  bet now records which reader counted it, and a table row matching a
+  just-counted round on game, stake and time raises a diagnostic saying so. It
+  only ever warns: nothing is merged or dropped on a guess.
+
 - **Stake rounds are read as they are played.** Stake's originals run on REST
   endpoints (`/_api/casino/<game>/bet`, `/next`, `/cashout`) and every reply
   carries the same envelope: round id, game, currency, stake and payout

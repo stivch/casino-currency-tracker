@@ -533,6 +533,23 @@ async function recordBets(rows, currency) {
   // A stake that will not parse means the scraper no longer understands the
   // table. That is a fault worth shouting about rather than a row worth
   // dropping quietly: silently skipped bets look exactly like a flat session.
+  // Two readers producing different ids for the same bet means every figure in
+  // this session is twice what it should be — and a doubled total looks
+  // entirely reasonable, which is why this has to say so rather than wait to
+  // be noticed. Reported when it first appears; the diagnostic list collapses
+  // repeats, so a whole evening of it stays one line with a count.
+  if (session.doubled > (base.doubled || 0)) {
+    const counted = Object.entries(session.sources || {})
+      .map(([source, n]) => `${n} from the ${source}`)
+      .join(', ');
+    await recordDiagnostic({
+      where: 'double counting',
+      message: 'The same bet is being counted twice — the game endpoints and the bet table are '
+        + `giving it different ids, so this session's totals are roughly double the real ones (${counted}). `
+        + 'Turn off "Track session P/L" until this is fixed, or reset the session after switching it back on.',
+    });
+  }
+
   if (unreadable > 0) {
     await recordDiagnostic({
       where: 'bet table',

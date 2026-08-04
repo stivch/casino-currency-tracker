@@ -83,6 +83,13 @@ export function emptySession(currency = null, now = Date.now()) {
     // game name -> {game, bets, wagered, returned}. Accumulated here rather
     // than rolled up from `log` at close, which only holds the last 50 bets.
     games: {},
+    // Which reader each counted bet came from: round, table or feed. Kept so
+    // that "half of these came from each" — the shape of double counting — is
+    // something the extension can see rather than something you have to
+    // notice in a total that looks plausible.
+    sources: {},
+    // Bets a second reader appears to have counted again under another id.
+    doubled: 0,
     log: [],
     curve: [],
   };
@@ -117,6 +124,38 @@ export function gamesOf(games) {
 
 /** The game a scraped row belongs to, normalised the one way. */
 const gameOf = (row) => (typeof row?.game === 'string' ? row.game.trim() : '');
+
+/**
+ * How far apart two readings of the same bet can land.
+ *
+ * The round arrives as the page plays it; the table row shows up on the next
+ * re-render. Seconds apart, not minutes.
+ */
+const DOUBLE_WINDOW_MS = 15_000;
+
+/**
+ * Is this table row the same bet as a round already counted?
+ *
+ * On Stake two readers run at once, and everything rests on them agreeing
+ * about a bet's id: when they do, the table's copy is deduplicated and never
+ * reaches here. So a *new* table row that matches a round on game, stake and
+ * time is the signature of the two disagreeing — which means every bet is
+ * being counted twice and every figure is double what it should be.
+ *
+ * This only ever raises a warning. It never merges or drops a bet: a false
+ * positive costs a message, and silently discarding a real bet on a guess
+ * about two matching stakes would be the far worse trade. Repeated identical
+ * stakes are normal play, and they cannot trigger this on their own — their
+ * table rows are deduplicated by id long before they get here.
+ */
+function doubledBy(log, row, amount, now) {
+  if (row?.source !== 'table') return false;
+  return (log || []).some((entry) => entry.source === 'round'
+    && entry.id !== row.id
+    && entry.game === gameOf(row)
+    && entry.amount === amount
+    && now - entry.at <= DOUBLE_WINDOW_MS);
+}
 
 /**
  * Freeze a finished session for the history list.
@@ -398,6 +437,8 @@ export function ingest(session, rows, { currency = null, now = Date.now(), table
     // Copied a level deep: the rows are mutated below, and a session accreted
     // by an older build has no games map at all.
     games: Object.fromEntries(Object.entries(session.games || {}).map(([k, v]) => [k, { ...v }])),
+    sources: { ...(session.sources || {}) },
+    doubled: session.doubled || 0,
   };
   if (!next.currency && currency) next.currency = currency;
 
@@ -425,14 +466,20 @@ export function ingest(session, rows, { currency = null, now = Date.now(), table
     }
 
     if (isNew) {
+      // Checked before this bet joins the log, so it cannot match itself.
+      if (doubledBy(next.log, row, amount, now)) next.doubled += 1;
+
       next.bets += 1;
       next.wagered += amount;
       next.returned += gross;
       if (gross > 0) next.wins += 1;
       else next.losses += 1;
 
+      const source = typeof row.source === 'string' && row.source ? row.source : 'table';
+      next.sources[source] = (next.sources[source] || 0) + 1;
+
       next.seen.push(row.id);
-      next.log.unshift({ id: row.id, game: row.game || '', amount, gross, profit, at: now });
+      next.log.unshift({ id: row.id, source, game: row.game || '', amount, gross, profit, at: now });
     } else {
       const [wasAmount, wasGross] = marks[row.id];
       next.wagered += amount - wasAmount;

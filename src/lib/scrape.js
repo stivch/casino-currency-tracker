@@ -158,6 +158,11 @@
 
       rows.push({
         id,
+        // Which reader produced this. On Stake two of them run at once — the
+        // game endpoints and this table — and whether that double-counts comes
+        // down to whether the two agree about a bet's id. Carrying the source
+        // is what lets the session notice when they do not.
+        source: 'table',
         settled: payout !== null,
         game: tr.cells[iGame]?.textContent.trim() || '',
         amount: parseCell(tr.cells[iAmount]?.textContent),
@@ -317,6 +322,7 @@
 
       all.push({
         id: group.id,
+        source: 'feed',
         // Nothing said either way — a provider slot — means finished: they are
         // settled server-side in one go, and there is no open state to be in.
         settled: group.settled === null ? true : group.settled,
@@ -420,6 +426,7 @@
     return {
       rows: [{
         id,
+        source: 'round',
         game: gameName(round.game),
         amount,
         // `ingest` reads a payout at or below zero as a loss, which is what a

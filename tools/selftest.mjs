@@ -746,6 +746,76 @@ console.log('\n-- badge');
   check('nothing to show is empty', compactMoney(null), '');
 }
 
+console.log('\n-- two readers counting one bet');
+{
+  // On Stake the game endpoints and the bet table both see every original, and
+  // the whole thing rests on them agreeing about a bet's id. If they do, the
+  // table's copy is deduplicated. If they do not, every figure doubles — and a
+  // doubled total looks entirely reasonable, so it has to be detected.
+  const round = (id, game, amount, payout) => ({ id, source: 'round', game, amount, payout });
+  const table = (id, game, amount, payout) => ({ id, source: 'table', game, amount, payout });
+
+  // The good case: same id from both readers.
+  let agree = emptySession('USDT', 1000);
+  agree = ingest(agree, [round('same-id', 'Mines', 1, 2)], { currency: 'USDT', now: 5000 }).session;
+  agree = ingest(agree, [table('same-id', 'Mines', 1, 2)], { currency: 'USDT', now: 6000 }).session;
+  check('a matching id is counted once', agree.bets, 1);
+  check('and raises nothing', agree.doubled, 0);
+  check('the round is what counted it', agree.sources, { round: 1 });
+
+  // The bad case: the table calls the same bet something else.
+  let differ = emptySession('USDT', 1000);
+  differ = ingest(differ, [round('round-id', 'Mines', 1, 2)], { currency: 'USDT', now: 5000 }).session;
+  differ = ingest(differ, [table('table-id', 'Mines', 1, 2)], { currency: 'USDT', now: 6000 }).session;
+  check('a differing id is counted twice', differ.bets, 2);
+  check('which is exactly what is reported', differ.doubled, 1);
+  check('with both readers named', differ.sources, { round: 1, table: 1 });
+
+  // What must not trigger it. Playing the same stake twice is ordinary, and
+  // those rounds each arrive from the round reader — their table copies are
+  // deduplicated by id long before this check sees them.
+  let repeat = emptySession('USDT', 1000);
+  for (const [i, id] of ['r1', 'r2', 'r3'].entries()) {
+    repeat = ingest(repeat, [round(id, 'Mines', 1, 0)], { currency: 'USDT', now: 5000 + i * 100 }).session;
+  }
+  check('repeating the same stake is not double counting', repeat.doubled, 0);
+
+  // A bet the round reader never saw — a provider slot, a sports bet — comes
+  // from the table alone and is a real, new bet.
+  let provider = emptySession('USDT', 1000);
+  provider = ingest(provider, [round('r1', 'Mines', 1, 0)], { currency: 'USDT', now: 5000 }).session;
+  provider = ingest(provider, [table('t1', 'Big Bass Bonanza', 1, 0)], { currency: 'USDT', now: 5500 }).session;
+  check('a table-only game is not a duplicate', provider.doubled, 0);
+  check('and is counted', provider.bets, 2);
+
+  // Same game and stake but hours apart is two evenings, not one bet.
+  let apart = emptySession('USDT', 1000);
+  apart = ingest(apart, [round('r1', 'Mines', 1, 0)], { currency: 'USDT', now: 5000 }).session;
+  apart = ingest(apart, [table('t1', 'Mines', 1, 0)], { currency: 'USDT', now: 5000 + 3_600_000 }).session;
+  check('far apart in time is not a duplicate', apart.doubled, 0);
+
+  // A different stake on the same game is a different bet.
+  let other = emptySession('USDT', 1000);
+  other = ingest(other, [round('r1', 'Mines', 1, 0)], { currency: 'USDT', now: 5000 }).session;
+  other = ingest(other, [table('t1', 'Mines', 2, 0)], { currency: 'USDT', now: 5500 }).session;
+  check('a different stake is not a duplicate', other.doubled, 0);
+
+  // Duel has one reader, so it can never trip this.
+  let duel = emptySession('USDT', 1000);
+  duel = ingest(duel, [{ id: 'd1', source: 'feed', game: 'Mines', amount: 1, payout: 0 }],
+    { currency: 'USDT', now: 5000 }).session;
+  duel = ingest(duel, [{ id: 'd2', source: 'feed', game: 'Mines', amount: 1, payout: 0 }],
+    { currency: 'USDT', now: 5500 }).session;
+  check('one reader cannot double count', duel.doubled, 0);
+  check('and its source is named', duel.sources, { feed: 2 });
+
+  // A row from a build that did not carry a source still has to count.
+  const legacy = ingest(emptySession('USDT', 1000), [{ id: 'x', game: 'Mines', amount: 1, payout: 0 }],
+    { currency: 'USDT' }).session;
+  check('an untagged row is assumed to be the table', legacy.sources, { table: 1 });
+  check('and still counts', legacy.bets, 1);
+}
+
 console.log('\n-- per-game roll-up');
 {
   const bet = (id, game, amount, payout) => ({ id, game, amount, payout });
