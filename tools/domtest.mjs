@@ -266,6 +266,51 @@ console.log('\n-- Stake: a slots spin, at a real stake');
   check('and it is only counted once', s.bets, 1);
 }
 
+console.log('\n-- Stake: a bonus buy that paid');
+{
+  // Captured from /_api/casino/slots-tome-of-life/bonus. The one that settles
+  // what `payout` means: a round that actually returned money.
+  const BONUS = {
+    id: '53d860de-b469-4dc3-95a6-f1492e072d7b',
+    active: false,
+    currency: 'usdt',
+    amountMultiplier: 1,
+    payoutMultiplier: 0.35472974,
+    amount: 0.00010434000000000001,
+    payout: 0.000037012500000000005,
+    game: 'slotsTomeOfLife',
+  };
+
+  const { rows, mismatch } = betsFromStakeGame(BONUS);
+
+  // 0.00010434 × 0.35472974 = 0.0000370125010716, against a stated
+  // 0.0000370125. A rounding step apart, not a different quantity — so the
+  // field is the gross return, and the computed figure is right.
+  check('the computed return matches Stake’s own', mismatch, null);
+  check('within a rounding step', Math.abs(rows[0].payout - BONUS.payout) < 1e-10, true);
+
+  // A different wrapper key and a different endpoint, and neither matters:
+  // the round is found by shape, and the game is named by the round.
+  check('a bonus buy is one bet', rows.length, 1);
+  check('filed under the same game as a plain spin', rows[0].game, 'Slots Tome Of Life');
+  check('and it is settled', rows[0].settled, true);
+
+  const s = ingest(emptySession(null, 1000), rows, { currency: 'USDT' }).session;
+  check('turnover is the buy-in', s.wagered, 0.00010434000000000001);
+
+  // The buy cost more than it returned, so it lost money — but it returned
+  // something, and `ingest` files anything that returned as a win. That is
+  // Stake's own framing, and the same thing the bet table produces, so it is
+  // left alone rather than made to disagree with the site.
+  check('it returned less than it cost', sessionProfit(s) < 0, true);
+  check('but a return is a return', [s.wins, s.losses], [1, 0]);
+
+  // The free spins inside `state` carry their own amounts, and they sum to a
+  // different figure than the stake. Reading turnover from there would be
+  // wrong by more than half, which is why `state` never leaves the page.
+  check('the stake is the buy-in, not the free spins', s.wagered !== 15 * 0.00000282, true);
+}
+
 console.log('\n-- Stake: a whole mines round');
 {
   // The property the entire multi-step design rests on: one round is one bet,

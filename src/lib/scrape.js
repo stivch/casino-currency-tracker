@@ -370,19 +370,24 @@
   /**
    * One round, as a bet row.
    *
-   * The return is computed as stake times `payoutMultiplier` rather than taken
-   * from the reply's own `payout`, because what `payout` means was unknown
-   * when this was written: every capture was zero-stake, where the gross
-   * return and the net profit are both zero and agree with everything.
+   * The return is stake times `payoutMultiplier`, and the reply's own `payout`
+   * is what that was checked against rather than what is used.
    *
-   * A losing slots spin at a real stake has since narrowed it — 0.00042962
-   * staked, `payout` 0. A net figure would have been −0.00042962 there, so
-   * `payout` is what came back rather than what was made. That still leaves a
-   * win unconfirmed, and the multiplier needs no confirming: 1.125 on a mines
-   * cashout is the total returned per unit staked, and 0 on a bust.
+   * `payout` is the gross return — what came back, not what was made. That was
+   * unknown while every capture was zero-stake, where gross and net are both
+   * zero and agree with everything, and it is now settled from two real ones:
+   * a losing spin reported 0 rather than a negative figure, and a paying round
+   * reported 0.0000370125 against a stake of 0.00010434 at 0.35472974, which
+   * is stake times multiplier to within a rounding step.
    *
-   * `payout` is still compared against the computed figure and a disagreement
-   * is reported, so a winning round settles the last of it by itself.
+   * The computed figure stays the one in use, and the comparison stays as the
+   * thing that would notice if Stake ever changed what the field means.
+   *
+   * `state` is ignored entirely, and that is not only for privacy. A bonus buy
+   * carries its free spins in there with their own per-spin amounts, and those
+   * sum to a different number than the stake — 0.0000423 against 0.00010434 in
+   * the captured round. Reading turnover out of `state` would be wrong by more
+   * than half.
    *
    * @returns {{rows: Array, currency: string|null, mismatch: object|null}}
    */
