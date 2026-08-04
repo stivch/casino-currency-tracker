@@ -1,0 +1,52 @@
+# Tests on every push; a zip attached to the release on every v* tag.
+#
+# selftest.mjs talks to the live rate providers, which is the point of it —
+# but a provider outage should not read as a broken commit, so it retries
+# once before failing the run.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pure-logic and provider tests
+        run: node tools/selftest.mjs || (sleep 30 && node tools/selftest.mjs)
+      - name: DOM scraping tests
+        run: node tools/domtest.mjs
+      - name: Page-world bridge tests
+        run: node tools/bridgetest.mjs
+      - name: Package (sanity)
+        run: node tools/package.mjs
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Version must match the tag
+        run: |
+          MANIFEST=$(node -p "require('./manifest.json').version")
+          TAG="${GITHUB_REF_NAME#v}"
+          test "$MANIFEST" = "$TAG" || { echo "manifest $MANIFEST != tag $TAG"; exit 1; }
+      - name: Build zip
+        run: node tools/package.mjs
+      - name: Attach to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
