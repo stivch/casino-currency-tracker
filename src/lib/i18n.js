@@ -3,19 +3,26 @@
 // Two lookups, in order. A bundle handed in by the service worker comes first,
 // because chrome.i18n cannot be overridden at runtime — it reads Chrome's own
 // display language and nothing else — and an extension whose language you can
-// only change by relaunching the browser in Hebrew is not one anybody switches.
+// only change by relaunching the whole browser is not one anybody switches.
 // chrome.i18n is the fallback, so the extension still speaks before any bundle
 // has arrived.
+//
+// English is the only bundle today. The indirection stays because it is what
+// makes a second language a data change rather than a rewrite.
 //
 // Every call also carries its English text as an argument rather than relying
 // on the files being complete: a missing key then degrades to the string that
 // was always there, instead of showing a raw key to whoever is unlucky enough
 // to be running that locale.
 
-/** Right-to-left languages. Only Hebrew is translated today. */
-export const RTL_LANGUAGES = new Set(['he']);
+/**
+ * Right-to-left languages. Empty while English is the only translation — the
+ * RTL layout work (bidi isolation of figures, flipped accents) lives in the
+ * git history under the Hebrew locale if a right-to-left language returns.
+ */
+export const RTL_LANGUAGES = new Set();
 
-/** @type {{lang: string, rtl: boolean, messages: Record<string, {message: string, placeholders?: object}>}|null} */
+/** @type {{lang: string, messages: Record<string, {message: string, placeholders?: object}>}|null} */
 let bundle = null;
 
 /** Install the bundle the service worker resolved. Null falls back to chrome.i18n. */
@@ -24,9 +31,6 @@ export function useMessages(next) {
 }
 
 export const activeLanguage = () => bundle?.lang || chrome.i18n?.getUILanguage?.() || 'en';
-
-export const isRtl = () =>
-  (bundle ? Boolean(bundle.rtl) : chrome.i18n?.getMessage('@@bidi_dir') === 'rtl');
 
 /**
  * Chrome's own substitution, done by hand: a message written "$COIN$ balance"
@@ -67,9 +71,6 @@ export function t(key, fallback = '', subs = undefined) {
 export function applyI18n(root = document) {
   const html = document.documentElement;
   html.lang = activeLanguage();
-  // Set both ways round, or switching back from Hebrew would leave the page
-  // flipped until it was reloaded.
-  html.dir = isRtl() ? 'rtl' : 'ltr';
 
   for (const el of root.querySelectorAll('[data-i18n]')) {
     el.textContent = t(el.dataset.i18n, el.textContent);

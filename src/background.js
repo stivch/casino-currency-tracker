@@ -12,7 +12,7 @@
 import { DEFAULTS, TARGET_CURRENCIES, loadSettings, sanitize } from './lib/settings.js';
 import { fetchFiatTable, fetchRate, pingKey, ratesFromDuel, ratesFromStake } from './lib/rates.js';
 import { coinRate, coinUsd, compactMoney, displayDecimals, effectiveRate, formatMoney } from './lib/format.js';
-import { RTL_LANGUAGES, t, useMessages } from './lib/i18n.js';
+import { t, useMessages } from './lib/i18n.js';
 import {
   CALC_VERSION, applyBalance, applyFunds, archiveEntry, emptySession, ingest, isStale,
   limitStatus, reconcile, rollSession, sessionProfit, summarise,
@@ -96,9 +96,10 @@ function chooseKeyMode(settings, usage, hasKey) {
 // script from its own storage key. One resolution, one answer everywhere.
 
 function resolveLanguage(settings) {
+  // English is the only bundle for now; the setting and the resolution stay so
+  // that more translations are a data change, not a plumbing change.
   if (settings.language && settings.language !== 'auto') return settings.language;
-  const ui = chrome.i18n?.getUILanguage?.() || 'en';
-  return ui.toLowerCase().startsWith('he') ? 'he' : 'en';
+  return 'en';
 }
 
 let bundleCache = { lang: null, messages: null };
@@ -108,11 +109,11 @@ async function loadBundle(lang) {
 
   try {
     const response = await fetch(chrome.runtime.getURL(`_locales/${lang}/messages.json`));
-    bundleCache = { lang, rtl: RTL_LANGUAGES.has(lang), messages: await response.json() };
+    bundleCache = { lang, messages: await response.json() };
   } catch {
     // A bundle that will not load is not worth failing over: chrome.i18n is
     // still there underneath, and English is still written at every call site.
-    bundleCache = { lang, rtl: RTL_LANGUAGES.has(lang), messages: {} };
+    bundleCache = { lang, messages: {} };
   }
 
   useMessages(bundleCache); // the worker's own strings, for notifications

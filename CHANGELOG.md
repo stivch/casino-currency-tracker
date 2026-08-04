@@ -9,6 +9,11 @@ The version in `manifest.json` is the single source of truth; a release is a
   trademark and a currency the extension is no longer limited to.
 - Full backup: one JSON file with settings and recorded sessions (never the API
   key), and a validating import that merges instead of replacing.
+- Rate alerts: a desktop notice when the effective rate crosses a threshold you
+  set, in either direction.
+- **English only.** The Hebrew bundle and all right-to-left layout support are
+  removed; localisation returns when there is more than one translation to
+  carry. The bundle machinery stays, so a language is a data change.
 - Repository: git history, CI running the three test suites, `tools/package.mjs`
   building a reproducible release zip.
 

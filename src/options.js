@@ -10,7 +10,7 @@ const $ = (id) => document.getElementById(id);
 const CHECKBOXES = ['enabled', 'trackSession', 'showHud', 'hoverTooltip', 'selectionTooltip',
   'assumeUnlabeled', 'inlineAnnotate', 'showBadge', 'notifyLimits', 'stakeRates', 'trackRakeback', 'rakebackPoll'];
 const NUMBERS = ['refreshMinutes', 'decimals', 'feePercent', 'sessionIdleMinutes'];
-const SELECTS = ['language', 'targetCurrency', 'fiscalYearStart'];
+const SELECTS = ['targetCurrency', 'fiscalYearStart'];
 // Nullable: blank means "no limit", so these cannot go through the numeric path.
 const LIMITS = ['limitWager', 'limitLoss', 'limitWin', 'limitMinutes', 'alertAbove', 'alertBelow'];
 

@@ -362,21 +362,23 @@ Right-click the toolbar icon → Options, or *All settings* in the popup.
 
 ### Language
 
-English or Hebrew, set at the top of Options: *Automatic* follows Chrome's own display
-language, or pick one outright. It applies everywhere at once — popup, options page and the
-overlay on the casino — and takes effect immediately, with no reload.
+**English only for now.** Every user-facing string still lives in
+`_locales/en/messages.json` rather than in the markup, and the machinery that resolves and
+publishes a bundle is intact — so adding a language is a new folder under `_locales` plus one
+entry in `LANGUAGES`, not a rewrite.
 
 `chrome.i18n` cannot be overridden at runtime; it answers with Chrome's display language and
-nothing else, which is why an extension that only used it could be switched to Hebrew only by
-relaunching the whole browser in Hebrew. So the service worker resolves the language itself,
-loads the matching bundle, and publishes it: pages read it from state, the overlay from its own
-storage key. `chrome.i18n` stays underneath as the fallback.
+nothing else, which is why an extension that only used it could be switched to another language
+only by relaunching the whole browser in that language. So the service worker resolves the
+language itself, loads the matching bundle, and publishes it: pages read it from state, the
+overlay from its own storage key. `chrome.i18n` stays underneath as the fallback.
 
 Every string also carries its English text at the call site, so a missing translation shows the
-English rather than a raw message key. Hebrew flips the page right-to-left; numbers, tickers
-and rates stay left-to-right inside it, because a money figure reads the same way in every
-language. Language and currency are independent axes: the Hebrew overlay prints `€1,234.50` left
-to right, which is how a Hebrew reader writes a euro figure anyway.
+English rather than a raw message key. Language and target currency are independent axes: the
+figures print `€1,234.50` whatever the interface language is.
+
+Right-to-left support was written and then removed along with the Hebrew bundle — the bidi
+isolation of figures and the flipped accents are in the git history if an RTL language returns.
 
 ## Rakeback and VIP progress
 
@@ -721,13 +723,10 @@ to look.
   slots. Sports bets through its Betby integration were not present in the ledger it was checked
   against, so if they are filed under some other name they would go uncounted — which the
   session's gap detection would show as a floor rather than hide.
-- All three surfaces have now been rendered against a stubbed extension API, in English and in
-  Hebrew, and screenshotted — which is how the overlay's P/L curve turned out never to have been
-  drawn at all. `svg.hidden = false` sets a plain property on an `<svg>`, because `hidden` is
-  defined on `HTMLElement` and an SVG element is not one; the attribute stayed put and the
-  overlay's `[hidden] { display: none !important }` kept the chart invisible from the day it was
-  written. Both charts now use `toggleAttribute`. What is still unverified is any of it inside a
-  real Chrome extension rather than a page pretending to be one.
-- Hebrew covers the popup, the overlay and the options page. The CoinGecko quota paragraphs in
-  Options are still English: they are long, they are diagnostics about someone else's billing,
-  and a half-translated one would be worse than an English one.
+- All three surfaces have now been rendered against a stubbed extension API and screenshotted —
+  which is how the overlay's P/L curve turned out never to have been drawn at all.
+  `svg.hidden = false` sets a plain property on an `<svg>`, because `hidden` is defined on
+  `HTMLElement` and an SVG element is not one; the attribute stayed put and the overlay's
+  `[hidden] { display: none !important }` kept the chart invisible from the day it was written.
+  Both charts now use `toggleAttribute`. What is still unverified is any of it inside a real
+  Chrome extension rather than a page pretending to be one.

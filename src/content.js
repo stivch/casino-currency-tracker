@@ -38,7 +38,6 @@
   // to override.
   let messages = null;
   let language = null;
-  let rtl = false;
 
   /**
    * Localised text, with the English written at the call site as the fallback.
@@ -63,7 +62,6 @@
   function applyBundle(bundle) {
     if (!bundle || bundle.lang === language) return false;
     language = bundle.lang;
-    rtl = Boolean(bundle.rtl);
     messages = bundle.messages || null;
     return true;
   }
@@ -403,29 +401,6 @@
       padding: 7px 16px; border-radius: 999px; font-size: 12px; font-weight: 700;
       box-shadow: 0 6px 20px rgba(0,0,0,.45);
     }
-    /*
-     * Anything holding digits, a ticker or a currency mark is its own bidi
-     * paragraph, laid out left-to-right regardless of the panel around it.
-     * Without this, "1 USDT = ₪3.05" inside a right-to-left panel is reordered
-     * into "USDT = ₪3.05 1" — every character correct, the meaning gone.
-     */
-    .hud[dir="rtl"] .rate-val,
-    .hud[dir="rtl"] .rate-meta,
-    .hud[dir="rtl"] .track-usdt,
-    .hud[dir="rtl"] .track-money,
-    .hud[dir="rtl"] .sess-dur,
-    .hud[dir="rtl"] .sess-row b,
-    .hud[dir="rtl"] .limit-left,
-    .hud[dir="rtl"] .rake,
-    .hud[dir="rtl"] .vip {
-      direction: ltr; unicode-bidi: isolate; text-align: left;
-    }
-    /* Labels keep the panel's direction; only the values flip. "יתרת USDT" is a
-       Hebrew phrase with a ticker in it, not a value — forcing it left-to-right
-       would put the ticker first and read backwards. */
-    .hud[dir="rtl"] .sess-row span,
-    .hud[dir="rtl"] .track-label { direction: rtl; unicode-bidi: isolate; }
-
     [hidden] { display: none !important; }
   `;
 
@@ -444,9 +419,8 @@
 
     hud = document.createElement('div');
     hud.className = 'hud';
-    // The overlay is ours, not Stake's, so it follows the extension's locale
-    // rather than the page's direction.
-    hud.dir = rtl ? 'rtl' : 'ltr';
+    // The overlay is ours, not Stake's: left-to-right regardless of the page.
+    hud.dir = 'ltr';
     hud.innerHTML = `
       <div class="hud-head">
         <span class="dot"></span>

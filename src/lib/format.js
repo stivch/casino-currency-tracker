@@ -63,11 +63,10 @@ export function parseAmount(str) {
 // every target at once, with no per-currency table in this repo to maintain or
 // to fall out of date.
 //
-// en-US rather than the reader's own locale, and that is deliberate: Hebrew's
-// currency form emits RTL control marks, which look broken inside a casino's
-// left-to-right layout. Language and target currency are independent axes here
-// — the overlay speaks Hebrew and still prints "€1,234.50" left to right, which
-// is how a Hebrew reader writes a euro figure anyway.
+// en-US rather than the reader's own locale, and that is deliberate: some
+// locales' currency form emits bidi control marks, which look broken inside a
+// casino's left-to-right layout. Language and target currency are independent
+// axes here — a figure prints "€1,234.50" whatever the interface language is.
 
 const symbolCache = new Map();
 const decimalCache = new Map();

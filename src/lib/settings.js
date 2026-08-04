@@ -4,8 +4,12 @@ import { parseAmount } from './format.js';
 // machines). The rate cache lives in storage.local — see rates.js — because it
 // is per-machine and rewritten every few minutes.
 
-/** 'auto' follows Chrome's own display language; the rest force one. */
-export const LANGUAGES = ['auto', 'en', 'he'];
+/**
+ * 'auto' follows Chrome's own display language; the rest force one. English
+ * only for now — the bundle plumbing stays so a new translation is one folder
+ * in _locales plus an entry here.
+ */
+export const LANGUAGES = ['auto', 'en'];
 
 /**
  * The fiats you can convert into.

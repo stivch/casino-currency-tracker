@@ -752,29 +752,25 @@ console.log('\n-- i18n');
   // it can fall through to it when a key is missing from the bundle.
   globalThis.chrome = { i18n: { getMessage: () => '', getUILanguage: () => 'en-US' } };
   const { readFileSync } = await import('node:fs');
-  const { t, useMessages, isRtl } = await import('../src/lib/i18n.js');
+  const { t, useMessages } = await import('../src/lib/i18n.js');
 
   const en = JSON.parse(readFileSync(new URL('../_locales/en/messages.json', import.meta.url), 'utf8'));
-  const he = JSON.parse(readFileSync(new URL('../_locales/he/messages.json', import.meta.url), 'utf8'));
 
-  // A key in the markup with no entry here shows English; an entry in one file
-  // and not the other shows English for half a page. Both are worth catching.
-  check('the two bundles carry the same keys',
-    [Object.keys(en).filter((k) => !he[k]), Object.keys(he).filter((k) => !en[k])], [[], []]);
-  check('placeholders are declared identically',
-    Object.keys(en).filter((k) => JSON.stringify(Object.keys(en[k].placeholders || {})) !== JSON.stringify(Object.keys(he[k].placeholders || {}))), []);
+  // Every declared placeholder must point at an argument slot — a content of
+  // "$3" with two arguments substitutes emptiness silently at runtime.
+  check('placeholder contents are well-formed',
+    Object.keys(en).filter((k) =>
+      Object.values(en[k].placeholders || {}).some((p) => !/^\$\d+$/.test(String(p.content)))), []);
 
-  useMessages({ lang: 'he', rtl: true, messages: he });
-  check('a plain message is translated', t('popReset', 'Reset'), 'איפוס');
+  useMessages({ lang: 'en', messages: en });
+  check('a plain message resolves from the bundle', t('popReset', 'fallback'), 'Reset');
   check('$1 lands in a named placeholder', t('hudNoCoinRate', 'no BTC rate yet', ['BTC']).includes('BTC'), true);
   check('and the placeholder token is consumed', t('hudNoCoinRate', '', ['BTC']).includes('$'), false);
-  check('hebrew reads right to left', isRtl(), true);
   check('a missing key falls back to the English at the call site',
     t('nosuchkey', 'English fallback'), 'English fallback');
 
   useMessages(null);
   check('with no bundle it falls back too', t('popReset', 'Reset'), 'Reset');
-  check('and stops claiming to be right-to-left', isRtl(), false);
 }
 
 console.log('\n-- live providers');
