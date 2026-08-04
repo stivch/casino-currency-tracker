@@ -167,6 +167,39 @@
   "notifyTimeTitle": {
     "message": "Time limit reached"
   },
+  "notifyRateUpTitle": {
+    "message": "Rate above your alert"
+  },
+  "notifyRateDownTitle": {
+    "message": "Rate below your alert"
+  },
+  "notifyRateAt": {
+    "message": "alert set at"
+  },
+  "optAlertAbove": {
+    "message": "Alert when the rate rises above ($MARK$)",
+    "placeholders": {
+      "mark": {
+        "content": "$1",
+        "example": "₪"
+      }
+    }
+  },
+  "optAlertAboveSub": {
+    "message": "A desktop notice when the effective USDT rate crosses this line upward. Fires on the crossing, once — not again until the rate has dipped back under. Blank = off."
+  },
+  "optAlertBelow": {
+    "message": "Alert when the rate falls below ($MARK$)",
+    "placeholders": {
+      "mark": {
+        "content": "$1",
+        "example": "₪"
+      }
+    }
+  },
+  "optAlertBelowSub": {
+    "message": "The same notice for the downward crossing. Both compare the effective rate — after your off-ramp spread — so the alert matches the figure on the badge. Blank = off."
+  },
   "hudTitle": {
     "message": "USDT → $CUR$",
     "placeholders": {

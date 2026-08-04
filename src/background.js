@@ -264,6 +264,12 @@ async function ensureFiatTable() {
 
 const MONEY_LIMITS = ['limitWager', 'limitLoss', 'limitWin'];
 
+// Rate-alert thresholds are target-currency-per-USDT, so a target switch moves
+// them with the same cross-rate as the money limits. They stay out of the
+// limitSwitch notice — a threshold is not a limit, and the notice text says
+// "limits".
+const RATE_ALERTS = ['alertAbove', 'alertBelow'];
+
 /** Everything the UI needs to say what just happened to the limits. Cleared on edit. */
 const LIMIT_SWITCH_MAX_AGE_MS = 7 * 24 * 60 * 60_000;
 
@@ -319,7 +325,8 @@ async function convertLimits(target) {
   if (from === target) return;
 
   const set = MONEY_LIMITS.filter((key) => Number.isFinite(settings[key]));
-  if (set.length === 0) {
+  const alerts = RATE_ALERTS.filter((key) => Number.isFinite(settings[key]));
+  if (set.length === 0 && alerts.length === 0) {
     // Nothing to convert and nothing to announce; just keep the tag honest.
     await chrome.storage.sync.set({ limitCurrency: target });
     return;
@@ -331,7 +338,7 @@ async function convertLimits(target) {
 
   if (!(perFrom > 0) || !(perTo > 0)) {
     const patch = { limitCurrency: target };
-    for (const key of set) patch[key] = null;
+    for (const key of [...set, ...alerts]) patch[key] = null;
     await chrome.storage.sync.set(patch);
     await chrome.storage.local.set({
       limitSwitch: { kind: 'cleared', from, to: target, at: Date.now(), limits: null },
@@ -342,6 +349,12 @@ async function convertLimits(target) {
   const factor = perTo / perFrom;
   const patch = { limitCurrency: target };
   const limits = {};
+  for (const key of alerts) {
+    // A threshold is a rate, and a rate in another currency is the same line in
+    // a different unit. Not rounded to display precision: a GBP-per-USDT figure
+    // lives in its third decimal.
+    patch[key] = settings[key] * factor;
+  }
   for (const key of set) {
     // Rounded to the new currency's own precision: a wager limit of ¥3,051.4 is
     // not a figure anyone set, and the yen has no minor unit to hold it. A
@@ -958,6 +971,53 @@ async function notifyCrossings(state) {
   });
 }
 
+// ---------------------------------------------------------------- rate alert
+//
+// "Tell me when the rate is worth acting on." The rate is already fetched on
+// every alarm tick, so the alert costs one comparison against the previous
+// reading. It fires on the crossing, not while the condition holds — a rate
+// sitting above the line all day is one notice, not one per refresh.
+
+async function notifyRateAlert(state) {
+  if (!chrome.notifications) return;
+  const { settings, rate } = state;
+  const target = settings.targetCurrency;
+  const value = rate.effective;
+  if (!Number.isFinite(value)) return;
+
+  const { rateAlert } = await chrome.storage.local.get('rateAlert');
+  // A reading in another currency is not a previous value of this one, so a
+  // target switch starts the comparison over instead of alerting on the jump.
+  const previous = rateAlert?.target === target ? rateAlert.value : null;
+  if (rateAlert?.target !== target || rateAlert?.value !== value) {
+    await chrome.storage.local.set({ rateAlert: { target, value, at: Date.now() } });
+  }
+  if (!Number.isFinite(previous) || previous === value) return;
+
+  const crossings = [];
+  if (Number.isFinite(settings.alertAbove) && previous < settings.alertAbove && value >= settings.alertAbove) {
+    crossings.push(['up', settings.alertAbove, t('notifyRateUpTitle', 'Rate above your alert')]);
+  }
+  if (Number.isFinite(settings.alertBelow) && previous > settings.alertBelow && value <= settings.alertBelow) {
+    crossings.push(['down', settings.alertBelow, t('notifyRateDownTitle', 'Rate below your alert')]);
+  }
+
+  const money = (v) => formatMoney(v, target, settings.decimals);
+  for (const [direction, threshold, title] of crossings) {
+    try {
+      chrome.notifications.create(`rate-${direction}-${Date.now()}`, {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+        title,
+        message: `1 USDT = ${money(value)} · ${t('notifyRateAt', 'alert set at')} ${money(threshold)}`,
+        priority: 1,
+      });
+    } catch {
+      // The badge and the popup still carry the rate.
+    }
+  }
+}
+
 /**
  * Mirror settings + derived rate into storage.local for content scripts.
  * The `key` block is stripped deliberately — the content script runs inside
@@ -980,6 +1040,7 @@ async function mirrorState() {
   // Neither is allowed to take the mirror down with it.
   await updateBadge(state).catch(() => {});
   await notifyCrossings(state).catch(() => {});
+  await notifyRateAlert(state).catch(() => {});
 
   return state;
 }

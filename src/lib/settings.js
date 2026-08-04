@@ -90,6 +90,13 @@ export const DEFAULTS = {
   // session opened. Time is what people actually lose track of.
   limitMinutes: null,
 
+  // Rate alerts: a desktop notice when the effective USDT rate crosses a line,
+  // in target-currency units per USDT. Fires on the crossing, not while the
+  // condition holds. null = off. Denominated in limitCurrency like the money
+  // limits, and converted alongside them when the target changes.
+  alertAbove: null,
+  alertBelow: null,
+
   // Toolbar badge: session P/L in shekels while a session is live, the rate
   // when it is not. Visible without opening anything.
   showBadge: true,
@@ -185,7 +192,7 @@ export function sanitize(patch) {
   // "1,000", "₪1,000" and "€1,000" are all the obvious things to type. Number()
   // turns every one of them into NaN — which used to land here as null and read
   // back as "off" while the UI reported it saved.
-  for (const field of ['limitWager', 'limitLoss', 'limitWin']) {
+  for (const field of ['limitWager', 'limitLoss', 'limitWin', 'alertAbove', 'alertBelow']) {
     if (!(field in out)) continue;
     const n = parseAmount(out[field]);
     out[field] = Number.isFinite(n) && n > 0 ? n : null;

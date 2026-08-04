@@ -202,6 +202,20 @@
           when Stake is the tab you are looking at.</span></span>
       <label class="switch"><input type="checkbox" id="notifyLimits"><span></span></label>
     </div>
+
+    <div class="row">
+      <span class="grow"><span class="label" id="optAlertAboveLabel">Alert when the rate rises above</span>
+        <span class="sub" data-i18n="optAlertAboveSub">A desktop notice when the effective USDT rate crosses this line upward.
+          Fires on the crossing, once — not again until the rate has dipped back under. Blank = off.</span></span>
+      <input type="text" id="alertAbove" placeholder="off" data-i18n-ph="popOff" inputmode="decimal">
+    </div>
+
+    <div class="row">
+      <span class="grow"><span class="label" id="optAlertBelowLabel">Alert when the rate falls below</span>
+        <span class="sub" data-i18n="optAlertBelowSub">The same notice for the downward crossing. Both compare the effective
+          rate — after your off-ramp spread — so the alert matches the figure on the badge. Blank = off.</span></span>
+      <input type="text" id="alertBelow" placeholder="off" data-i18n-ph="popOff" inputmode="decimal">
+    </div>
   </div>
 
   <h2 data-i18n="optStake">Casino account</h2>

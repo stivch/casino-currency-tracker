@@ -167,6 +167,39 @@
   "notifyTimeTitle": {
     "message": "מגבלת זמן נחצתה"
   },
+  "notifyRateUpTitle": {
+    "message": "השער מעל ההתראה שלך"
+  },
+  "notifyRateDownTitle": {
+    "message": "השער מתחת להתראה שלך"
+  },
+  "notifyRateAt": {
+    "message": "התראה הוגדרה על"
+  },
+  "optAlertAbove": {
+    "message": "התראה כשהשער עולה מעל ($MARK$)",
+    "placeholders": {
+      "mark": {
+        "content": "$1",
+        "example": "₪"
+      }
+    }
+  },
+  "optAlertAboveSub": {
+    "message": "הודעת שולחן עבודה כשהשער האפקטיבי של USDT חוצה את הקו הזה כלפי מעלה. נורית פעם אחת בחצייה — ולא שוב עד שהשער ירד חזרה מתחתיו. ריק = כבוי."
+  },
+  "optAlertBelow": {
+    "message": "התראה כשהשער יורד מתחת ($MARK$)",
+    "placeholders": {
+      "mark": {
+        "content": "$1",
+        "example": "₪"
+      }
+    }
+  },
+  "optAlertBelowSub": {
+    "message": "אותה הודעה לחצייה כלפי מטה. שתיהן משוות את השער האפקטיבי — אחרי מרווח הפדיון שלך — כך שההתראה תואמת את המספר שעל התג. ריק = כבוי."
+  },
   "hudTitle": {
     "message": "USDT ל־$CUR$",
     "placeholders": {

@@ -12,7 +12,7 @@ const CHECKBOXES = ['enabled', 'trackSession', 'showHud', 'hoverTooltip', 'selec
 const NUMBERS = ['refreshMinutes', 'decimals', 'feePercent', 'sessionIdleMinutes'];
 const SELECTS = ['language', 'targetCurrency', 'fiscalYearStart'];
 // Nullable: blank means "no limit", so these cannot go through the numeric path.
-const LIMITS = ['limitWager', 'limitLoss', 'limitWin', 'limitMinutes'];
+const LIMITS = ['limitWager', 'limitLoss', 'limitWin', 'limitMinutes', 'alertAbove', 'alertBelow'];
 
 let history = [];
 
@@ -93,6 +93,8 @@ function render() {
   $('optLimWagerLabel').textContent = t('optLimWager', `Wager limit (${mark})`, [mark]);
   $('optLimLossLabel').textContent = t('optLimLoss', `Loss limit (${mark})`, [mark]);
   $('optLimWinLabel').textContent = t('optLimWin', `Win limit (${mark})`, [mark]);
+  $('optAlertAboveLabel').textContent = t('optAlertAbove', `Alert when the rate rises above (${mark})`, [mark]);
+  $('optAlertBelowLabel').textContent = t('optAlertBelow', `Alert when the rate falls below (${mark})`, [mark]);
 
   // Said next to the picker that caused it, because this is the page where the
   // currency was just changed.
