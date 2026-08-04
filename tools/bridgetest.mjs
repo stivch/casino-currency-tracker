@@ -353,7 +353,7 @@ console.log('\n-- Stake: rounds seen going past');
       payout: 0,
       updatedAt: 'Tue, 04 Aug 2026 21:43:54 GMT',
       game: 'mines',
-      user: { id: '934a8066-38b5-450d-86c1-b5f23786162b', name: 'Mangisto42069' },
+      user: { id: '00000000-0000-4000-8000-000000000000', name: 'SomePlayer' },
       state: { rounds: [{ field: 0, payoutMultiplier: 1.03125 }], minesCount: 1, mines: null },
     },
   };
@@ -408,8 +408,8 @@ console.log('\n-- Stake: rounds seen going past');
   // account id and the player's name, and the whole revealed board; none of it
   // is the extension's business and none of it may be broadcast.
   const bus = JSON.stringify(page.posted);
-  check('the player’s name never reaches the bus', bus.includes('Mangisto42069'), false);
-  check('nor their account id', bus.includes('934a8066'), false);
+  check('the player’s name never reaches the bus', bus.includes('SomePlayer'), false);
+  check('nor their account id', bus.includes('00000000-0000-4000-8000'), false);
   check('nor the board', bus.includes('minesCount'), false);
 
   await page.pageFetch('/_api/casino/mines/cashout', { body: '{"identifier":"dVr9TVep8zVsrOj_ch3o2"}' });
