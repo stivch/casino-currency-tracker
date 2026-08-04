@@ -340,10 +340,90 @@
     };
   }
 
+  // ------------------------------------------- Stake's own games, as rounds
+  //
+  // A round arrives from the page-world bridge on every action: opened by
+  // /bet, updated by each /next, closed by /cashout or by hitting a mine. All
+  // of them carry the same id, so the session sees one bet that starts
+  // unsettled and settles once — which is exactly the shape `ingest` already
+  // handles for a table row that settles late.
+
+  /**
+   * Stake names its games in the URL form: "mines", "dragon-tower". The bet
+   * table renders them as "Mines" and "Dragon Tower", and both sources feed
+   * the same per-game totals — so they are made to agree here rather than
+   * producing two rows for one game.
+   */
+  function gameName(raw) {
+    return String(raw || '')
+      .split(/[-_\s]+/)
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  /**
+   * One round, as a bet row.
+   *
+   * The return is computed as stake times `payoutMultiplier` rather than taken
+   * from the reply's own `payout`. Both were zero in every capture this was
+   * written against — they were zero-stake rounds — so whether `payout` is the
+   * gross return or the net profit is genuinely unknown, and a field whose
+   * meaning is unknown is not one to do arithmetic with. The multiplier is
+   * unambiguous: 1.125 on a mines cashout is the total returned per unit
+   * staked, and 0 when the round is lost.
+   *
+   * `payout` is still compared against it, and a disagreement is reported, so
+   * the first real-money round settles the question by itself.
+   *
+   * @returns {{rows: Array, currency: string|null, mismatch: object|null}}
+   */
+  function betsFromStakeGame(round) {
+    const id = typeof round?.id === 'string' ? round.id : '';
+    const amount = round?.amount;
+    const multiplier = round?.payoutMultiplier;
+
+    // Typed rather than coerced, and that distinction is load-bearing:
+    // Number(null) is 0, so a reply missing its stake would come through as a
+    // real bet of nothing — one bet, no turnover, booked as a loss because a
+    // zero return is a loss. That is the same shape as the unreadable-stake
+    // bug the table scraper already had to be fixed for.
+    if (!id || typeof amount !== 'number' || !Number.isFinite(amount)
+      || typeof multiplier !== 'number' || !Number.isFinite(multiplier)) {
+      return { rows: [], currency: null, mismatch: null };
+    }
+
+    const gross = amount * multiplier;
+    const settled = round.active !== true;
+
+    // Only worth comparing once there is money on it: at a zero stake every
+    // reading of every field is zero and agrees with all the others.
+    const stated = Number(round?.payout);
+    const mismatch = settled && amount > 0 && Number.isFinite(stated)
+      && Math.abs(stated - gross) > Math.max(1e-8, gross * 1e-6)
+      ? { id, amount, multiplier, computed: gross, stated }
+      : null;
+
+    return {
+      rows: [{
+        id,
+        game: gameName(round.game),
+        amount,
+        // `ingest` reads a payout at or below zero as a loss, which is what a
+        // busted round is: multiplier 0, so gross 0.
+        payout: gross,
+        settled,
+      }],
+      currency: String(round?.currency || '').toUpperCase() || null,
+      mismatch,
+    };
+  }
+
   const API = {
     MY_BETS_HEADERS, parseCell, findMyBetsTable, scrapeBets,
     SITES, siteFor, DUEL_HOSTS, STAKE_HOSTS,
     DUEL_CURRENCIES, DUEL_BET_KEY_RE, duelSettled, betsFromDuel,
+    gameName, betsFromStakeGame,
   };
 
   // In the page: a global in the content script's isolated world, read by

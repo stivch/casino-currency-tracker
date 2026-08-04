@@ -15,7 +15,7 @@
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { findMyBetsTable, scrapeBets, parseCell, siteFor, betsFromDuel, DUEL_HOSTS } = require('../src/lib/scrape.js');
+const { findMyBetsTable, scrapeBets, parseCell, siteFor, betsFromDuel, DUEL_HOSTS, betsFromStakeGame, gameName } = require('../src/lib/scrape.js');
 
 let failures = 0;
 
@@ -157,6 +157,70 @@ console.log('\n-- which site');
   }
   check('a duel lookalike TLD is still not Duel', siteFor('duel.limited.evil.net'), null);
   check('an unrelated duel TLD is not Duel', siteFor('duel.example'), null);
+}
+
+console.log('\n-- Stake: a game round');
+{
+  // Real replies, captured from stake.com, trimmed of the `user` block and the
+  // full `state.rounds` list — neither of which crosses the bridge.
+  const alive = {
+    id: '4df90720-a8fe-41da-9f0f-c8eecd9bb77b',
+    active: true,
+    currency: 'usdt',
+    amountMultiplier: 1,
+    payoutMultiplier: 0,
+    amount: 0,
+    payout: 0,
+    game: 'mines',
+  };
+
+  const busted = { ...alive, active: false, payoutMultiplier: 0 };
+  const cashed = { ...alive, id: '723853ed-18d2-4b05-a442-e29a0ff32e44', active: false, payoutMultiplier: 1.125 };
+
+  const open = betsFromStakeGame(alive);
+  check('an open round is one row', open.rows.length, 1);
+  check('carrying the round id', open.rows[0].id, alive.id);
+  check('and it is not settled', open.rows[0].settled, false);
+  check('the coin comes off the round itself', open.currency, 'USDT');
+  check('the game is named as the bet table names it', open.rows[0].game, 'Mines');
+
+  // The whole reason an open round is marked unsettled: ingest skips it and
+  // leaves it unseen, so a mines grid being revealed does not book as a total
+  // loss and is reconsidered when it closes.
+  check('a busted round is settled', betsFromStakeGame(busted).rows[0].settled, true);
+  check('and returns nothing', betsFromStakeGame(busted).rows[0].payout, 0);
+
+  check('a cashed-out round is settled', betsFromStakeGame(cashed).rows[0].settled, true);
+
+  // Every capture was zero-stake, so the arithmetic is checked at a stake the
+  // captures did not have. 1.125 is the gross multiplier, so 8 returns 9.
+  const real = betsFromStakeGame({ ...cashed, amount: 8 });
+  check('the return is stake times multiplier', real.rows[0].payout, 9);
+  check('and the stake is untouched', real.rows[0].amount, 8);
+
+  const lost = betsFromStakeGame({ ...busted, amount: 8 });
+  check('a lost round returns nothing at any stake', lost.rows[0].payout, 0);
+  check('so ingest reads it as a loss of the stake', lost.rows[0].payout - lost.rows[0].amount, -8);
+
+  // Stake's own payout field was 0 in every capture, at a zero stake, so
+  // whether it is gross or net is unknown. It is compared, never used.
+  check('agreement is silent', betsFromStakeGame({ ...cashed, amount: 8, payout: 9 }).mismatch, null);
+  check('a zero-stake round never complains', betsFromStakeGame(cashed).mismatch, null);
+  check('an open round never complains', betsFromStakeGame({ ...alive, amount: 8, payout: 999 }).mismatch, null);
+
+  const net = betsFromStakeGame({ ...cashed, amount: 8, payout: 1 });
+  check('but a real disagreement is reported', Boolean(net.mismatch), true);
+  check('with both figures, so it can be read', [net.mismatch.computed, net.mismatch.stated], [9, 1]);
+
+  // Junk must not become a bet.
+  check('no id is no row', betsFromStakeGame({ ...cashed, id: '' }).rows, []);
+  check('no amount is no row', betsFromStakeGame({ ...cashed, amount: null }).rows, []);
+  check('no multiplier is no row', betsFromStakeGame({ ...cashed, payoutMultiplier: 'x' }).rows, []);
+  check('nothing at all is no row', betsFromStakeGame(undefined).rows, []);
+
+  check('a hyphenated game reads as the table names it', gameName('dragon-tower'), 'Dragon Tower');
+  check('a single word', gameName('limbo'), 'Limbo');
+  check('nothing is nothing', gameName(undefined), '');
 }
 
 console.log('\n-- switched-on domains');

@@ -1247,7 +1247,7 @@
 
   // Table reading itself lives in lib/scrape.js, loaded by the manifest as the
   // content script before this one. It is the same code the DOM tests run.
-  const { findMyBetsTable, scrapeBets, betsFromDuel } = globalThis.StakeScrape;
+  const { findMyBetsTable, scrapeBets, betsFromDuel, betsFromStakeGame } = globalThis.StakeScrape;
 
   let betObserver = null;
   let betTimer = null;
@@ -1373,6 +1373,34 @@
       return;
     }
 
+    // One round of a Stake original, seen as the page plays it. Exact stake,
+    // exact multiplier and the round's own coin — so this needs neither the
+    // bet table nor the wallet chip, and it does not wait for either to
+    // re-render. The table stays as the reader for everything Stake does not
+    // run itself: provider slots and sports.
+    if (event.data.kind === 'round') {
+      if (!settings?.enabled || !settings?.trackSession) return;
+      const { rows, currency, mismatch } = betsFromStakeGame(event.data.round);
+      if (!rows.length) return;
+
+      // The one thing a zero-stake capture could not settle. If Stake's own
+      // payout figure ever disagrees with stake times multiplier, the reading
+      // is wrong in one direction or the other and it says so rather than
+      // quietly picking one.
+      if (mismatch) {
+        send({
+          type: 'contentError',
+          where: 'stake round',
+          message: `payout disagrees with stake × multiplier on ${mismatch.id}: `
+            + `${mismatch.amount} × ${mismatch.multiplier} = ${mismatch.computed}, but the reply said ${mismatch.stated}.`,
+        });
+      }
+
+      currentCurrency = currency || activeCurrency();
+      send({ type: 'bets', rows, currency: currentCurrency });
+      return;
+    }
+
     if (!settings?.trackRakeback) return;
 
     if (event.data.kind === 'meta') {
@@ -1444,12 +1472,13 @@
       rates: Boolean(settings?.enabled && settings?.stakeRates),
       poll: capture && Boolean(settings?.rakebackPoll),
       seconds: 60,
-      // Only ever true on a site with no bet table. It is not a separate
-      // opt-in the way the account poll is: where the ledger is an API, this is
-      // what session tracking *is*, and switching tracking on to have it read
-      // nothing would be worse than the request. The bridge still only asks
-      // while the tab is visible and focused.
-      bets: Boolean(settings?.enabled && settings?.trackSession && SITE.ledger === 'api'),
+      // "Read bets from the page's own traffic." What that costs differs by
+      // site and the bridge decides which: on Stake the game endpoints go past
+      // on their own and are only watched, on Duel there is no bet table so
+      // the transaction feed has to be asked for. Neither is a separate opt-in
+      // from session tracking — switching tracking on and having it read
+      // nothing would be worse than either.
+      bets: Boolean(settings?.enabled && settings?.trackSession),
       betSeconds: 15,
     };
 

@@ -339,6 +339,80 @@ console.log('\n-- Stake: still reads its own traffic, and asks for nothing');
   check('and no bet reading is attempted there', page.kindsOf('bets'), []);
 }
 
+console.log('\n-- Stake: rounds seen going past');
+{
+  // A real reply, whole — including the two parts that must not cross the bus.
+  const MINES_ALIVE = {
+    minesNext: {
+      id: '4df90720-a8fe-41da-9f0f-c8eecd9bb77b',
+      active: true,
+      currency: 'usdt',
+      amountMultiplier: 1,
+      payoutMultiplier: 0,
+      amount: 0,
+      payout: 0,
+      updatedAt: 'Tue, 04 Aug 2026 21:43:54 GMT',
+      game: 'mines',
+      user: { id: '934a8066-38b5-450d-86c1-b5f23786162b', name: 'Mangisto42069' },
+      state: { rounds: [{ field: 0, payoutMultiplier: 1.03125 }], minesCount: 1, mines: null },
+    },
+  };
+
+  const MINES_CASHOUT = {
+    minesCashout: {
+      ...MINES_ALIVE.minesNext,
+      id: '723853ed-18d2-4b05-a442-e29a0ff32e44',
+      active: false,
+      payoutMultiplier: 1.125,
+      state: { rounds: [{ field: 10, payoutMultiplier: 1.03125 }], minesCount: 1, mines: [4] },
+    },
+  };
+
+  const page = loadBridge('stake.com', {
+    '/_api/casino/mines/next': MINES_ALIVE,
+    '/_api/casino/mines/cashout': MINES_CASHOUT,
+  });
+
+  page.sendIn({ kind: 'config', site: 'stake', capture: false, rates: false, bets: true, poll: false });
+
+  await page.pageFetch('/_api/casino/mines/next', { body: '{"fields":[10]}' });
+  await page.settle();
+
+  const rounds = page.kindsOf('round');
+  check('an open round is forwarded', rounds.length, 1);
+  check('with the fields the accounting needs',
+    Object.keys(rounds[0].round).sort(),
+    ['active', 'amount', 'currency', 'game', 'id', 'payout', 'payoutMultiplier']);
+  check('and it is still open', rounds[0].round.active, true);
+
+  // The bus is readable by every script on the page. The reply carries the
+  // account id and the player's name, and the whole revealed board; none of it
+  // is the extension's business and none of it may be broadcast.
+  const bus = JSON.stringify(page.posted);
+  check('the player’s name never reaches the bus', bus.includes('Mangisto42069'), false);
+  check('nor their account id', bus.includes('934a8066'), false);
+  check('nor the board', bus.includes('minesCount'), false);
+
+  await page.pageFetch('/_api/casino/mines/cashout', { body: '{"identifier":"dVr9TVep8zVsrOj_ch3o2"}' });
+  await page.settle();
+
+  const settled = page.kindsOf('round')[1];
+  check('a cashout is forwarded as settled', settled.round.active, false);
+  check('carrying its multiplier', settled.round.payoutMultiplier, 1.125);
+
+  check('and the bridge asked for none of it', page.requested, []);
+}
+
+{
+  // Session tracking off means the rounds are not read at all, not read and
+  // discarded — the same switch that stops Duel's feed being fetched.
+  const page = loadBridge('stake.com', { '/_api/casino/mines/next': { minesNext: { id: 'r', active: true, currency: 'usdt', amount: 1, payoutMultiplier: 0, game: 'mines' } } });
+  page.sendIn({ kind: 'config', site: 'stake', capture: false, rates: false, bets: false, poll: false });
+  await page.pageFetch('/_api/casino/mines/next', { body: '{}' });
+  await page.settle();
+  check('nothing is read with tracking off', page.kindsOf('round'), []);
+}
+
 console.log('\n-- nothing replays a casino action');
 {
   // Stake's games are driven by REST endpoints — /_api/casino/mines/bet places

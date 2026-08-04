@@ -5,6 +5,16 @@ The version in `manifest.json` is the single source of truth; a release is a
 
 ## Unreleased
 
+- **Stake rounds are read as they are played.** Stake's originals run on REST
+  endpoints (`/_api/casino/<game>/bet`, `/next`, `/cashout`) and every reply
+  carries the same envelope: round id, game, currency, stake and payout
+  multiplier, with only `state` differing per game. Watching those gives an
+  exact stake, the round's own coin, and the result the moment it lands —
+  no bet table, no wallet chip, no ten-row window. Read only: the bridge never
+  sends one, and a test asserts it with every timer firing.
+  The bet table stays as the reader for what Stake does not run itself,
+  provider slots and sports.
+
 - **By game.** Every bet already carried its game name and it was thrown away
   when the session was archived. Sessions now accumulate per-game totals as
   bets arrive — not rolled up from the per-bet log at close, which only holds

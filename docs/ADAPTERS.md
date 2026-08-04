@@ -54,6 +54,17 @@ The source of every session figure. Two shapes are already supported:
 - **`ledger: 'api'`** — a JSON feed, read on a timer while the tab is open, visible and focused
   (Duel).
 
+A third shape is now in use on Stake alongside its table: **the game's own action endpoints**.
+Stake's originals run on `/_api/casino/<game>/bet`, `/next` and `/cashout`, and every reply
+carries the same envelope — `{id, active, game, currency, amount, payoutMultiplier}` — with only
+`state` differing between games. Since the accounting needs nothing from `state`, one reader
+covers every original.
+
+Two rules specific to it. **Never send one**: these endpoints place and settle real bets, and
+`tools/bridgetest.mjs` asserts the bridge originates none of them. And **`active` is the settled
+flag** — a mines grid mid-reveal is `active: true` and must be left unsettled and unseen, or it
+books as a total loss until it is cashed.
+
 A ledger row must yield **an exact stake, an exact gross return, and an id that is stable across
 re-renders**. Anything less is not a ledger:
 

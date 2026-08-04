@@ -131,6 +131,73 @@
       if (rates.length) post('rates', { source: 'stake', rates });
     }
 
+    // ------------------------------------------------- Stake's own games
+    //
+    // Stake's originals are driven by REST, one endpoint per action:
+    //   /_api/casino/mines/bet      opens a round
+    //   /_api/casino/mines/next     reveals a tile, round still open
+    //   /_api/casino/mines/cashout  settles it
+    //
+    // Every reply carries the same envelope — {<action>: {id, active, game,
+    // currency, amount, payoutMultiplier, …}} — with only `state` differing
+    // between games, and `state` is the one part the accounting does not need.
+    // So one reader covers every original rather than one per game.
+    //
+    // Read only. These are the endpoints that place and settle real bets, and
+    // nothing here ever sends one: see the matching test in tools/bridgetest.
+    const CASINO_PATH = '/_api/casino/';
+
+    /**
+     * The round object out of a reply, whatever the action wrapped it in.
+     *
+     * Found by shape rather than by a list of key names, so an action nobody
+     * has seen yet — blackjack's hit and stand, a game added next year — is
+     * read rather than ignored. Everything the accounting needs must be
+     * present and the right type, or this is not a round.
+     */
+    function roundOf(json) {
+      for (const value of Object.values(json || {})) {
+        if (!value || typeof value !== 'object') continue;
+        if (typeof value.id !== 'string' || !value.id) continue;
+        if (typeof value.active !== 'boolean') continue;
+        if (typeof value.game !== 'string' || !value.game) continue;
+        // Typed, not coerced: Number(null) is 0, and a round whose stake is
+        // missing must be refused here rather than forwarded as a free bet.
+        if (typeof value.amount !== 'number' || !Number.isFinite(value.amount)) continue;
+        if (typeof value.payoutMultiplier !== 'number' || !Number.isFinite(value.payoutMultiplier)) continue;
+        return value;
+      }
+      return null;
+    }
+
+    /**
+     * Forward one round, cut to the fields the accounting uses.
+     *
+     * The reply also carries `user` — an account id and the player's name —
+     * and `state`, the full board with every revealed tile. Neither is any of
+     * the extension's business, and this bus is readable by every script on
+     * the page, so the narrowing happens here rather than after broadcasting.
+     */
+    function harvestRound(json) {
+      const round = roundOf(json);
+      if (!round) return;
+
+      post('round', {
+        round: {
+          id: round.id,
+          game: round.game,
+          currency: String(round.currency || ''),
+          amount: Number(round.amount),
+          payoutMultiplier: Number(round.payoutMultiplier),
+          // Stake's own figure. Not what the return is computed from — see
+          // betsFromStakeGame — but carried so the two can be compared, since
+          // whether it is gross or net cannot be told from a zero-stake round.
+          payout: Number(round.payout),
+          active: round.active === true,
+        },
+      });
+    }
+
     function operationOf(body) {
       return OPERATIONS.find((name) => body.includes(name)) || null;
     }
@@ -166,6 +233,11 @@
 
       /** Watch one outgoing request. Returns true if its reply is worth reading. */
       inspect({ url, input, init, body, wants }) {
+        // A game action. Recognised by path alone — these carry no operation
+        // name — and deliberately checked before the GraphQL branch so a
+        // casino path can never reach the header capture below.
+        if (url.includes(CASINO_PATH)) return wants.bets ? 'round' : null;
+
         if (!url.includes(ENDPOINT)) return null;
 
         // Only a string body can be read without consuming the request. Stake
@@ -197,6 +269,12 @@
 
       /** Read a reply the inspector marked as interesting. */
       absorb(what, json, wants) {
+        // A game reply is nothing like a GraphQL one, so it is routed by what
+        // the inspector decided rather than tried against both readers.
+        if (what === 'round') {
+          if (wants.bets) harvestRound(json);
+          return;
+        }
         if (wants.account) harvest(json);
         if (wants.rates) harvestRates(json);
       },
@@ -589,7 +667,10 @@
 
     wants.account = Boolean(config.capture);
     wants.rates = Boolean(config.rates);
-    wants.bets = Boolean(config.bets) && SITE.readsBets;
+    // "Interested in bets", which is not the same as "polls for them". Stake's
+    // rounds go past on their own and are only watched; Duel's have to be
+    // asked for, and that is what readsBets gates below.
+    wants.bets = Boolean(config.bets);
 
     clearInterval(accountTimer);
     clearInterval(betTimer);
@@ -604,7 +685,7 @@
     // on Duel it is the only way a session exists at all — switching session
     // tracking on and having it read nothing would be worse than the request.
     // It still only fires while the tab is visible and focused.
-    if (wants.bets) {
+    if (wants.bets && SITE.readsBets) {
       betTimer = every(pollBets, config.betSeconds, 10);
       pollBets();
     }
