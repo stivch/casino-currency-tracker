@@ -729,7 +729,6 @@ export async function getState() {
     session: session
       ? {
           ...session,
-          seen: undefined,
           profit: sessionProfit(session),
           // Reported rather than acted on: archiving happens when the next bet
           // arrives, so a read never causes a write.
