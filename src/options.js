@@ -1,7 +1,7 @@
 import { plotSeries } from './lib/chart.js';
 import { applyI18n, t, useMessages } from './lib/i18n.js';
 import { currencySymbol, formatMoney } from './lib/format.js';
-import { fiscalYearOf, restate } from './lib/session.js';
+import { fiscalYearOf, realisedRtp, restate } from './lib/session.js';
 import { limitSwitchText } from './lib/notices.js';
 import { CASINOS, DEFAULTS, OPTIONAL_DOMAINS, TARGET_CURRENCIES, casinoForDomain, mirrorOrigins } from './lib/settings.js';
 
@@ -282,6 +282,54 @@ function closedAt(entry, value) {
   return `<span class="flag" title="${why.replace(/"/g, '&quot;')}">—</span>`;
 }
 
+/**
+ * Which games the money actually went into, per coin.
+ *
+ * Only sessions recorded since the roll-up existed carry it, so the count of
+ * those is said out loud — a breakdown covering half the history and not
+ * saying so is a breakdown nobody should trust.
+ */
+function renderGames(totals) {
+  const buckets = Object.values(totals || {}).filter((b) => b.games.length > 0);
+  const wrap = $('gameWrap');
+  const note = $('gameNote');
+
+  wrap.hidden = buckets.length === 0;
+  if (buckets.length === 0) {
+    wrap.innerHTML = '';
+    note.textContent = t('gamesNone',
+      'No per-game figures yet. Sessions recorded from now on keep which games they were played on.');
+    return;
+  }
+
+  const covered = history.filter((e) => Array.isArray(e.games)).length;
+  note.textContent = covered === history.length
+    ? t('gamesAll', `From all ${history.length} recorded sessions.`, [String(history.length)])
+    : t('gamesSome',
+      `From ${covered} of ${history.length} recorded sessions — the rest were archived before this was kept.`,
+      [String(covered), String(history.length)]);
+
+  wrap.innerHTML = buckets.map((bucket) => {
+    const head = `<thead><tr><th>${t('colGame', 'Game')}</th><th>${t('colBets', 'Bets')}</th>
+      <th>${t('colWagered', 'Wagered')}</th><th>${t('colPl', 'P/L')}</th>
+      <th>${t('colRtp', 'Return')}</th></tr></thead>`;
+
+    const rows = bucket.games.map((row) => {
+      const profit = row.returned - row.wagered;
+      const rtp = realisedRtp(row.wagered, row.returned, row.bets);
+      return `<tr>
+        <td>${escapeHtml(row.game || t('gameUnnamed', 'unnamed'))}</td>
+        <td>${row.bets.toLocaleString()}</td>
+        <td>${num(row.wagered)}</td>
+        <td class="${signClass(profit)}">${profit > 0 ? '+' : ''}${num(profit)}</td>
+        <td>${rtp === null ? '—' : `${rtp.toFixed(2)}%`}</td>
+      </tr>`;
+    }).join('');
+
+    return `<h3>${bucket.currency}</h3><div class="table-scroll"><table>${head}<tbody>${rows}</tbody></table></div>`;
+  }).join('');
+}
+
 function renderHistory(totals) {
   $('historyCount').textContent = history.length
     ? t('historyCount', `${history.length} session${history.length === 1 ? '' : 's'} recorded.`, [String(history.length)])
@@ -293,14 +341,33 @@ function renderHistory(totals) {
   // two different things.
   $('historyTotals').innerHTML = Object.values(totals || {})
     .map(
-      (bucket) => `<div class="card"><h3>${t('cardLifetime', `${bucket.currency} — lifetime`, [bucket.currency])}</h3><dl>
+      (bucket) => {
+        // Below the sample threshold this is variance with a percent sign on
+        // it, so it is a dash rather than a verdict on the games.
+        const rtp = realisedRtp(bucket.wagered, bucket.returned, bucket.bets);
+        const net = bucket.deposited - bucket.withdrawn;
+
+        return `<div class="card"><h3>${t('cardLifetime', `${bucket.currency} — lifetime`, [bucket.currency])}</h3><dl>
         <dt>${t('colSessions', 'Sessions')}</dt><dd>${bucket.sessions}</dd>
         <dt>${t('colBets', 'Bets')}</dt><dd>${bucket.bets.toLocaleString()}</dd>
         <dt>${t('colWagered', 'Wagered')}</dt><dd>${num(bucket.wagered)}</dd>
         <dt>${t('colPl', 'P/L')}</dt><dd class="${signClass(bucket.profit)}">${bucket.profit > 0 ? '+' : ''}${num(bucket.profit)}</dd>
-      </dl></div>`,
+        <dt title="${t('rtpWhy', 'What came back per unit staked, over every recorded bet.').replace(/"/g, '&quot;')}">${t('colRtp', 'Return')}</dt>
+        <dd>${rtp === null
+          ? `<span class="flag" title="${t('rtpTooFew', 'Fewer than 200 bets recorded — too small a sample to mean anything.').replace(/"/g, '&quot;')}">—</span>`
+          : `${rtp.toFixed(2)}%`}</dd>
+        <dt title="${t('fundedWhy', 'Money you logged as moving in or out, which no bet explains. Only as complete as what you told it about.').replace(/"/g, '&quot;')}">${t('colFunded', 'In / out')}</dt>
+        <dd>${bucket.fundedSessions === 0
+          ? `<span class="flag" title="${t('fundedNone', 'Nothing logged. Use “Money in / out” in the popup when you deposit or withdraw.').replace(/"/g, '&quot;')}">—</span>`
+          : `<span class="good">+${num(bucket.deposited)}</span> / <span class="warn">−${num(bucket.withdrawn)}</span>`}</dd>
+        ${bucket.fundedSessions === 0 ? '' : `<dt>${t('colNetFunded', 'Net put in')}</dt>
+        <dd class="${signClass(-net)}">${net > 0 ? '+' : ''}${num(net)}</dd>`}
+      </dl></div>`;
+      },
     )
     .join('');
+
+  renderGames(totals);
 
   const mark = currencySymbol(target());
   const head = `<thead><tr><th>${t('colStarted', 'Started')}</th><th>${t('colLength', 'Length')}</th>

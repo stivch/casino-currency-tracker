@@ -1169,5 +1169,57 @@
   },
   "creditLicence": {
     "message": "MIT licensed, and provided as is with no warranty. It reports; it does not intervene, and nothing here is tax or financial advice."
+  },
+  "optGames": {
+    "message": "By game"
+  },
+  "colRtp": {
+    "message": "Return"
+  },
+  "colFunded": {
+    "message": "In / out"
+  },
+  "colNetFunded": {
+    "message": "Net put in"
+  },
+  "gameUnnamed": {
+    "message": "unnamed"
+  },
+  "rtpWhy": {
+    "message": "What came back per unit staked, over every recorded bet."
+  },
+  "rtpTooFew": {
+    "message": "Fewer than 200 bets recorded — too small a sample to mean anything."
+  },
+  "fundedWhy": {
+    "message": "Money you logged as moving in or out, which no bet explains. Only as complete as what you told it about."
+  },
+  "fundedNone": {
+    "message": "Nothing logged. Use “Money in / out” in the popup when you deposit or withdraw."
+  },
+  "gamesNone": {
+    "message": "No per-game figures yet. Sessions recorded from now on keep which games they were played on."
+  },
+  "gamesAll": {
+    "message": "From all $N$ recorded sessions.",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "gamesSome": {
+    "message": "From $DONE$ of $ALL$ recorded sessions — the rest were archived before this was kept.",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "4"
+      },
+      "all": {
+        "content": "$2",
+        "example": "12"
+      }
+    }
   }
 }

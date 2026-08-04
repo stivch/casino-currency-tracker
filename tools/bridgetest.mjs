@@ -339,6 +339,60 @@ console.log('\n-- Stake: still reads its own traffic, and asks for nothing');
   check('and no bet reading is attempted there', page.kindsOf('bets'), []);
 }
 
+console.log('\n-- nothing replays a casino action');
+{
+  // Stake's games are driven by REST endpoints — /_api/casino/mines/bet places
+  // a real bet with real money, /cashout settles one. When the bet reader is
+  // written against those, the bridge will be watching them go past, and the
+  // one thing it must never do is send one itself.
+  //
+  // Structurally that holds because a replay can only ever send a body that
+  // was captured, and only the account operations are captured. This asserts
+  // it from the outside, so the guarantee survives the reader being added.
+  const ACTIONS = [
+    '/_api/casino/mines/bet',
+    '/_api/casino/mines/next',
+    '/_api/casino/mines/cashout',
+    '/_api/casino/dice/bet',
+  ];
+
+  const VIP = {
+    data: {
+      user: {
+        id: 'u1',
+        rakeback: { enabled: true, balances: [{ currency: 'usdt', availableAmount: 1.5 }] },
+        flagProgress: { flag: 'bronze', progress: 0.42 },
+      },
+    },
+  };
+
+  const page = loadBridge('stake.com', {
+    '/_api/graphql': VIP,
+    ...Object.fromEntries(ACTIONS.map((path) => [path, { round: { identifier: 'r1' } }])),
+  });
+
+  page.sendIn({ kind: 'config', site: 'stake', capture: true, rates: true, poll: true, seconds: 30 });
+
+  // The page plays a round while everything the bridge can do is switched on.
+  for (const path of ACTIONS) {
+    await page.pageFetch(path, { body: JSON.stringify({ currency: 'usdt', amount: 5 }) });
+  }
+  await page.settle();
+
+  // Then every timer the config started fires.
+  for (const timer of page.intervals) await timer.fn();
+  await page.settle();
+
+  const sent = page.requested.map(String);
+  check('the bridge sent no casino action of its own',
+    sent.filter((url) => url.includes('/_api/casino/')), []);
+
+  // The other half of it: a round's payload must not be sitting in the replay
+  // store waiting to be sent by some later change.
+  check('and no action payload was captured',
+    JSON.stringify(page.posted).includes('minesCount'), false);
+}
+
 console.log('\n-- the adapter follows the config, not the hostname');
 {
   // A user-added mirror is a hostname the bridge cannot recognise, so the

@@ -80,6 +80,9 @@ export function emptySession(currency = null, now = Date.now()) {
     // id -> [amount, gross], so a row that changes after being counted can be
     // unwound rather than ignored.
     marks: {},
+    // game name -> {game, bets, wagered, returned}. Accumulated here rather
+    // than rolled up from `log` at close, which only holds the last 50 bets.
+    games: {},
     log: [],
     curve: [],
   };
@@ -93,6 +96,27 @@ export const sessionProfit = (session) => (session ? session.returned - session.
  *     so the entry can be restated into a currency chosen later.
  */
 export const SNAPSHOT_VERSION = 1;
+
+/**
+ * Per-game totals, biggest turnover first — the order the question is asked in.
+ *
+ * Accumulated as bets arrive rather than derived from `log` at close, because
+ * the log is capped at LOG_LIMIT: rolling it up at the end would silently
+ * report a three-hundred-bet evening as its last fifty bets, which is the kind
+ * of wrong number that looks entirely reasonable.
+ *
+ * A bet whose game did not read is filed under '' rather than dropped, so the
+ * per-game rows always add back up to the session totals. A breakdown that
+ * quietly omits bets is worse than one with an unnamed line in it.
+ */
+export function gamesOf(games) {
+  return Object.values(games || {})
+    .map((row) => ({ ...row }))
+    .sort((a, b) => b.wagered - a.wagered || a.game.localeCompare(b.game));
+}
+
+/** The game a scraped row belongs to, normalised the one way. */
+const gameOf = (row) => (typeof row?.game === 'string' ? row.game.trim() : '');
 
 /**
  * Freeze a finished session for the history list.
@@ -117,7 +141,7 @@ export const SNAPSHOT_VERSION = 1;
 export function archiveEntry(session, {
   endedAt = Date.now(), rate = null, target = null, usd = null, fiat = null, fiatAt = null, fee = 0,
 } = {}) {
-  const { seen, marks, log, curve, ...rest } = session;
+  const { seen, marks, log, curve, games, ...rest } = session;
   const check = reconcile(session);
 
   // Only a complete snapshot is stored. Half of one would look restateable and
@@ -132,6 +156,9 @@ export function archiveEntry(session, {
     // sits in. The per-bet log is still dropped — that is an audit trail, not a
     // result, and it does not survive the session it audits.
     curve: downsample(curve, 60),
+    // Which games the evening actually went into. A few small rows, and the
+    // one part of the per-bet log that is a result rather than an audit trail.
+    games: gamesOf(games),
     endedAt,
     profit: sessionProfit(session),
     rateAtClose: Number.isFinite(rate) ? rate : null,
@@ -250,6 +277,11 @@ export function summarise(history) {
     const key = session.currency || 'UNKNOWN';
     const bucket = (totals[key] ||= {
       currency: key, sessions: 0, bets: 0, wagered: 0, returned: 0, wins: 0, losses: 0, profit: 0,
+      // Money moved in and out that no bet explains, kept as two figures rather
+      // than one net. Ten deposits against ten withdrawals nets to zero, and
+      // "zero" is not what happened.
+      deposited: 0, withdrawn: 0, fundedSessions: 0,
+      games: {},
     });
 
     bucket.sessions += 1;
@@ -259,9 +291,35 @@ export function summarise(history) {
     bucket.wins += session.wins || 0;
     bucket.losses += session.losses || 0;
     bucket.profit += session.profit ?? (session.returned || 0) - (session.wagered || 0);
+
+    const funded = Number(session.funded) || 0;
+    if (funded > 0) bucket.deposited += funded;
+    else if (funded < 0) bucket.withdrawn += -funded;
+    if (funded !== 0) bucket.fundedSessions += 1;
+
+    for (const row of session.games || []) {
+      const name = typeof row?.game === 'string' ? row.game : '';
+      const game = (bucket.games[name] ||= { game: name, bets: 0, wagered: 0, returned: 0 });
+      game.bets += row.bets || 0;
+      game.wagered += row.wagered || 0;
+      game.returned += row.returned || 0;
+    }
   }
 
+  for (const bucket of Object.values(totals)) bucket.games = gamesOf(bucket.games);
   return totals;
+}
+
+/**
+ * Return-to-player as it actually landed: what came back per unit staked.
+ *
+ * Null below `minBets`, and that is the point of the argument. Over a few dozen
+ * bets this figure is variance with a percent sign on it, and shown without a
+ * caveat it reads as a verdict on the games rather than on the sample.
+ */
+export function realisedRtp(wagered, returned, bets = Infinity, minBets = 200) {
+  if (!(wagered > 0) || bets < minBets) return null;
+  return (returned / wagered) * 100;
 }
 
 // Cell parsing lives in lib/scrape.js, with the rest of the table reading and
@@ -337,6 +395,9 @@ export function ingest(session, rows, { currency = null, now = Date.now(), table
     log: (session.log || []).slice(),
     curve: (session.curve || []).slice(),
     marks,
+    // Copied a level deep: the rows are mutated below, and a session accreted
+    // by an older build has no games map at all.
+    games: Object.fromEntries(Object.entries(session.games || {}).map(([k, v]) => [k, { ...v }])),
   };
   if (!next.currency && currency) next.currency = currency;
 
@@ -348,6 +409,20 @@ export function ingest(session, rows, { currency = null, now = Date.now(), table
     const amount = numeric(row.amount);
     const gross = grossOf(row.payout);
     const profit = gross - amount;
+
+    // Per-game, by the same rules as the session totals: a new bet adds, a
+    // correction applies the difference. Keyed on the row's own game so a
+    // correction lands on the same line the bet did.
+    const game = (next.games[gameOf(row)] ||= { game: gameOf(row), bets: 0, wagered: 0, returned: 0 });
+    if (isNew) {
+      game.bets += 1;
+      game.wagered += amount;
+      game.returned += gross;
+    } else {
+      const [wasAmount, wasGross] = marks[row.id];
+      game.wagered += amount - wasAmount;
+      game.returned += gross - wasGross;
+    }
 
     if (isNew) {
       next.bets += 1;

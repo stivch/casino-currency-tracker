@@ -5,6 +5,18 @@ The version in `manifest.json` is the single source of truth; a release is a
 
 ## Unreleased
 
+- **By game.** Every bet already carried its game name and it was thrown away
+  when the session was archived. Sessions now accumulate per-game totals as
+  bets arrive — not rolled up from the per-bet log at close, which only holds
+  the last 50 — and keep them in history. Options gets a *By game* table with
+  bets, turnover, P/L and return per game per coin.
+- **Lifetime money in and out.** `funded` was recorded every session and never
+  summed. Deposits and withdrawals are now totalled per coin and kept apart
+  rather than netted, since ten in against ten out is not nothing happening.
+- **Realized return.** What came back per unit staked, per coin and per game.
+  Blank below 200 recorded bets, because under that it is variance with a
+  percent sign on it.
+
 - **Sites are a closed list.** `CASINOS` in `src/lib/settings.js` names every
   casino and every domain it answers on; the extension runs nowhere else, and
   the manifest is checked against the registry by the test suite. Duel's

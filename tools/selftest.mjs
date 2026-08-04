@@ -12,7 +12,7 @@ import {
 import { fetchRate, pingKey, ratesFromDuel, ratesFromStake } from '../src/lib/rates.js';
 import { DEFAULTS, TARGET_CURRENCIES, sanitize } from '../src/lib/settings.js';
 import { downsample, plotSeries } from '../src/lib/chart.js';
-import { applyBalance, applyFunds, archiveEntry, emptySession, fiscalYearOf, ingest, isStale, limitStatus, pushCurve, reconcile, restate, rollSession, sessionProfit, summarise } from '../src/lib/session.js';
+import { applyBalance, applyFunds, archiveEntry, emptySession, fiscalYearOf, gamesOf, ingest, isStale, limitStatus, pushCurve, realisedRtp, reconcile, restate, rollSession, sessionProfit, summarise } from '../src/lib/session.js';
 
 let failures = 0;
 
@@ -744,6 +744,98 @@ console.log('\n-- badge');
   check('tens of thousands drop the decimal', compactMoney(42_000), '42k');
   check('losses carry the sign', compactMoney(-320), '-320');
   check('nothing to show is empty', compactMoney(null), '');
+}
+
+console.log('\n-- per-game roll-up');
+{
+  const bet = (id, game, amount, payout) => ({ id, game, amount, payout });
+  let s = emptySession('USDT', 1000);
+
+  s = ingest(s, [bet('b3', 'Dice', 1, 0), bet('b2', 'Mines', 4, 3), bet('b1', 'Mines', 1, 0)],
+    { currency: 'USDT' }).session;
+
+  const rolled = gamesOf(s.games);
+  check('one row per game, biggest turnover first', rolled.map((r) => r.game), ['Mines', 'Dice']);
+  check('Mines totals', [rolled[0].bets, rolled[0].wagered, rolled[0].returned], [2, 5, 3]);
+  check('Dice totals', [rolled[1].bets, rolled[1].wagered, rolled[1].returned], [1, 1, 0]);
+
+  // Equal turnover has to land somewhere stable, or the table reshuffles
+  // between renders for no reason the reader can see.
+  const tied = gamesOf({ b: { game: 'b', bets: 1, wagered: 5, returned: 0 },
+    a: { game: 'a', bets: 1, wagered: 5, returned: 0 } });
+  check('a tie falls back to the name', tied.map((r) => r.game), ['a', 'b']);
+
+  // The property that makes the breakdown trustworthy: it must reconcile with
+  // the session it came from, or it is quietly omitting bets.
+  check('per-game bets add up to the session', rolled.reduce((n, r) => n + r.bets, 0), s.bets);
+  check('per-game turnover adds up', rolled.reduce((n, r) => n + r.wagered, 0), s.wagered);
+  check('per-game returns add up', rolled.reduce((n, r) => n + r.returned, 0), s.returned);
+
+  // A bet whose game did not read is filed, not dropped — otherwise the sums
+  // above stop holding exactly when the scraper is having trouble.
+  const nameless = ingest(emptySession('USDT', 1000), [{ id: 'n1', amount: 1, payout: 0 }],
+    { currency: 'USDT' }).session;
+  check('a nameless game still gets a row', gamesOf(nameless.games).map((r) => r.game), ['']);
+  check('and still adds up', gamesOf(nameless.games)[0].wagered, nameless.wagered);
+
+  // A correction has to move the game row too, or the breakdown drifts away
+  // from the totals over an evening of late-settling bets.
+  let c = ingest(emptySession('USDT', 1000), [bet('c1', 'Mines', 1, 0)], { currency: 'USDT' }).session;
+  c = ingest(c, [bet('c1', 'Mines', 1, 5)], { currency: 'USDT' }).session;
+  check('a corrected bet corrects its game row', gamesOf(c.games)[0].returned, c.returned);
+  check('without double-counting the bet', gamesOf(c.games)[0].bets, 1);
+
+  // The reason this is accumulated rather than rolled up from `log` at close.
+  let long = emptySession('USDT', 1000);
+  for (let i = 0; i < 120; i++) {
+    long = ingest(long, [bet(`L${i}`, 'Dice', 1, 0)], { currency: 'USDT' }).session;
+  }
+  check('the log is capped', long.log.length, 50);
+  check('the per-game roll-up is not', gamesOf(long.games)[0].bets, 120);
+
+  const filed = archiveEntry(long, { rate: 3.7, target: 'ILS' });
+  check('the roll-up survives archiving', filed.games[0].bets, 120);
+  check('the raw map does not', filed.games instanceof Array && !filed.gamesMap, true);
+  check('and the log still does not', filed.log, undefined);
+
+  const totals = summarise([filed, filed]);
+  check('lifetime per-game sums across sessions', totals.USDT.games[0].bets, 240);
+}
+
+console.log('\n-- lifetime money in and out');
+{
+  const base = { currency: 'USDT', bets: 4, wagered: 10, returned: 8, wins: 1, losses: 3, profit: -2 };
+
+  const totals = summarise([
+    { ...base, funded: 100 },
+    { ...base, funded: -40 },
+    { ...base, funded: 0 },
+  ]);
+
+  // Deposits and withdrawals are kept apart on purpose: netting them to zero
+  // would report ten in and ten out as nothing having happened.
+  check('deposits are summed', totals.USDT.deposited, 100);
+  check('withdrawals are summed as a positive figure', totals.USDT.withdrawn, 40);
+  check('only sessions that moved money are counted', totals.USDT.fundedSessions, 2);
+  check('sessions with no funding do not distort it', summarise([{ ...base }]).USDT.fundedSessions, 0);
+  check('an entry from before the field existed is not counted',
+    summarise([{ ...base, funded: undefined }]).USDT.fundedSessions, 0);
+}
+
+console.log('\n-- realised RTP');
+{
+  check('what came back per unit staked', realisedRtp(1000, 970, 500), 97);
+  // Rounded: this is a figure shown to two decimals, not one anything compares
+  // against, and 1100/1000 in binary floating point is 110.00000000000001.
+  check('a winning stretch reads above 100', Number(realisedRtp(1000, 1100, 500).toFixed(4)), 110);
+
+  // The guard that stops this reading as a verdict on the games rather than on
+  // the sample.
+  check('too few bets is null, not a number', realisedRtp(1000, 970, 50), null);
+  check('exactly at the threshold counts', realisedRtp(1000, 970, 200), 97);
+  check('no turnover is null', realisedRtp(0, 0, 500), null);
+  check('negative turnover is null', realisedRtp(-5, 1, 500), null);
+  check('an unknown bet count is trusted, for a caller that has none', realisedRtp(1000, 970), 97);
 }
 
 console.log('\n-- supported domains');

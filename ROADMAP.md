@@ -10,7 +10,9 @@ no new permission, no new site knowledge. That is what puts it first.
 
 ## Tier 1 — the data is already there
 
-### 1.1 Lifetime money in and out
+**1.1, 1.2 and 1.3 have shipped.** 1.4 is the one left in this tier.
+
+### 1.1 Lifetime money in and out ✅ DONE
 
 **The gap.** `funded` is recorded per session (`applyFunds`, `src/lib/session.js`), survives into
 history through `archiveEntry`, and is then never summed. `summarise` buckets `sessions`, `bets`,
@@ -31,7 +33,7 @@ entered by hand in the popup. The figure must be labelled as "what you told it a
 presented as a bank statement. Where a session's cross-check is unreconciled, say so in the
 total rather than quietly summing over it.
 
-### 1.2 Realized RTP, against expectation
+### 1.2 Realized RTP, against expectation ✅ DONE (partly)
 
 **The gap.** Nothing in the codebase computes `returned / wagered`. There is no concept of
 house edge anywhere.
@@ -51,7 +53,7 @@ say so — a confidence band, or at minimum a bet-count threshold below which th
 greyed with "too few bets to mean anything". A number that looks like a verdict after forty spins
 would be worse than no number.
 
-### 1.3 Per-game breakdown
+### 1.3 Per-game breakdown ✅ DONE
 
 **The gap.** `game` is captured on every bet (`ingest`, `src/lib/session.js`), rendered in the
 live bet log, and written to the per-bet CSV. Then `archiveEntry` strips `log` entirely, so
@@ -169,10 +171,10 @@ review already flags. Everything above stays on the descriptive side of it delib
 
 ## Suggested order
 
-1. **1.1 lifetime money in and out** — biggest blind spot, data already stored, one aggregation.
-2. **1.2 realized RTP** — same, and it makes 1.3 worth more.
-3. **1.3 per-game roll-up** — needs an archive schema bump, so it wants doing before the history
-   grows further.
+1. ~~**1.1 lifetime money in and out**~~ — done: deposits and withdrawals kept apart, per coin.
+2. ~~**1.2 realized RTP**~~ — done for the observed figure, per coin and per game, null below 200
+   bets. Still to do: the expected-loss column, which needs a house-edge figure per game.
+3. ~~**1.3 per-game roll-up**~~ — done: accumulated live in `session.games`, frozen at archive.
 4. **1.4 time-of-day** — cheap, and it pairs with 1.3 in the same reporting surface.
 5. **2.1 loss-chasing** — the first thing here that is not arithmetic, and the most valuable.
 6. **2.2 / 2.3** — after the posture question in 2.3 has been answered.
