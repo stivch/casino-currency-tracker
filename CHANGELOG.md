@@ -3,7 +3,7 @@
 The version in `manifest.json` is the single source of truth; a release is a
 `v<version>` tag, and CI attaches the zip to it.
 
-## Unreleased
+## 1.5.0 — 5 August 2026
 
 - **Double-counting guard.** On Stake two readers see every original — the game
   endpoints and the bet table — and it all rests on them agreeing about a bet's
