@@ -1,9 +1,9 @@
 {
   "extName": {
-    "message": "Stake USDT → ILS"
+    "message": "Casino Currency Tracker"
   },
   "extDescription": {
-    "message": "Shows casino amounts in your own currency at a live rate. Hover, select, or pin your balance to a floating readout."
+    "message": "Shows casino amounts in your own currency at a live rate, with session tracking and limits. Works on Stake and Duel."
   },
   "actionTitle": {
     "message": "USDT converter"
@@ -237,7 +237,7 @@
     }
   },
   "optTitle": {
-    "message": "Stake USDT converter"
+    "message": "Casino Currency Tracker"
   },
   "optIntro": {
     "message": "Live rate from CoinGecko, falling back to a USD-based feed. Works with no API key; add a Demo key below to stop sharing a rate limit with everyone on your IP."

@@ -709,13 +709,13 @@ $('reset').addEventListener('click', async () => {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-$('exportHistory').addEventListener('click', () => download(`stake-sessions-${today()}.csv`, toCsv()));
+$('exportHistory').addEventListener('click', () => download(`casino-sessions-${today()}.csv`, toCsv()));
 
-$('exportYears').addEventListener('click', () => download(`stake-years-${today()}.csv`, yearsToCsv()));
+$('exportYears').addEventListener('click', () => download(`casino-years-${today()}.csv`, yearsToCsv()));
 
 $('exportBets').addEventListener('click', () => {
   if (!state.session?.log?.length) return status(t('statusNoBets', 'No bets in the current session yet.'));
-  download(`stake-bets-${today()}.csv`, betsToCsv());
+  download(`casino-bets-${today()}.csv`, betsToCsv());
 });
 
 $('clearHistory').addEventListener('click', async () => {

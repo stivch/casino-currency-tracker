@@ -1,4 +1,4 @@
-# Stake USDT converter
+# Casino Currency Tracker
 
 A Chrome extension that shows casino amounts in your own currency at a live rate — any of
 forty-five fiats, shekels by default. Works on **Stake** and on **Duel**. No account, no API
@@ -8,7 +8,7 @@ key, no build step.
 
 1. Open `chrome://extensions`
 2. Turn on **Developer mode** (top right)
-3. **Load unpacked** → select this folder (`stake-ils-converter`)
+3. **Load unpacked** → select this folder
 4. Open Stake or Duel. A small readout appears in the bottom-right corner.
 
 ## The two sites
