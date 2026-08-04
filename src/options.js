@@ -553,8 +553,8 @@ function betsToCsv() {
 }
 
 /** Build and download locally; nothing leaves the machine. */
-function download(name, text) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+function download(name, text, type = 'text/csv;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([text], { type }));
   const link = document.createElement('a');
   link.href = url;
   link.download = name;
@@ -716,6 +716,48 @@ $('exportYears').addEventListener('click', () => download(`casino-years-${today(
 $('exportBets').addEventListener('click', () => {
   if (!state.session?.log?.length) return status(t('statusNoBets', 'No bets in the current session yet.'));
   download(`casino-bets-${today()}.csv`, betsToCsv());
+});
+
+$('exportBackup').addEventListener('click', async () => {
+  const { backup } = await send({ type: 'exportBackup' });
+  download(`casino-tracker-backup-${today()}.json`, JSON.stringify(backup, null, 1), 'application/json');
+  status(t('statusBackupSaved', 'Backup saved.'));
+});
+
+$('importBackup').addEventListener('click', () => $('importFile').click());
+
+$('importFile').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0];
+  event.target.value = ''; // so picking the same file again still fires change
+  if (!file) return;
+
+  let backup = null;
+  try {
+    backup = JSON.parse(await file.text());
+  } catch {
+    return status(t('statusBackupUnreadable', 'Not a readable backup file.'));
+  }
+
+  const offered = Array.isArray(backup?.sessionHistory) ? backup.sessionHistory.length : 0;
+  const ok = confirm(t('backupConfirm',
+    `Import ${offered} recorded sessions and the settings from this file? Existing sessions are kept and duplicates are skipped.`,
+    [String(offered)]));
+  if (!ok) return;
+
+  try {
+    const result = await send({ type: 'importBackup', backup });
+    state = await send({ type: 'getState' });
+    useMessages(state.i18n);
+    applyI18n();
+    fillCurrencies();
+    fillMonths();
+    render();
+    await loadHistory();
+    status(t('statusBackupImported', `Imported ${result.added} new sessions (${result.duplicates} already here).`,
+      [String(result.added), String(result.duplicates)]));
+  } catch (error) {
+    status(String(error?.message || error));
+  }
 });
 
 $('clearHistory').addEventListener('click', async () => {

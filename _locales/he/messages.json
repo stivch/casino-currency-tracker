@@ -479,6 +479,46 @@
   "statusNoBets": {
     "message": "אין עדיין הימורים בסשן הנוכחי."
   },
+  "optBackup": {
+    "message": "גיבוי"
+  },
+  "optBackupIntro": {
+    "message": "הכל נשמר במחשב הזה בלבד, ולכן הסרת התוסף מוחקת גם את ההיסטוריה. הגיבוי הוא קובץ JSON אחד — הגדרות וסשנים מוקלטים, בלי מפתח API. ייבוא ממזג: סשנים קיימים נשמרים וכפילויות מדולגות, כך ששחזור קובץ ישן לעולם לא מוחק סשן חדש יותר."
+  },
+  "optExportBackup": {
+    "message": "ייצוא גיבוי"
+  },
+  "optImportBackup": {
+    "message": "ייבוא גיבוי"
+  },
+  "backupConfirm": {
+    "message": "לייבא $COUNT$ סשנים מוקלטים ואת ההגדרות מהקובץ הזה? סשנים קיימים נשמרים וכפילויות מדולגות.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "statusBackupSaved": {
+    "message": "הגיבוי נשמר."
+  },
+  "statusBackupUnreadable": {
+    "message": "זה לא קובץ גיבוי קריא."
+  },
+  "statusBackupImported": {
+    "message": "יובאו $ADDED$ סשנים חדשים ($DUP$ כבר היו כאן).",
+    "placeholders": {
+      "added": {
+        "content": "$1",
+        "example": "12"
+      },
+      "dup": {
+        "content": "$2",
+        "example": "3"
+      }
+    }
+  },
   "colStarted": {
     "message": "התחיל"
   },

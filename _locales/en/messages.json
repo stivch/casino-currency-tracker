@@ -479,6 +479,46 @@
   "statusNoBets": {
     "message": "No bets in the current session yet."
   },
+  "optBackup": {
+    "message": "Backup"
+  },
+  "optBackupIntro": {
+    "message": "Everything lives on this machine, so uninstalling the extension deletes the history with it. The backup is one JSON file — settings and recorded sessions, no API key. Importing merges: existing sessions are kept and duplicates are skipped, so restoring an old file never deletes a newer session."
+  },
+  "optExportBackup": {
+    "message": "Export backup"
+  },
+  "optImportBackup": {
+    "message": "Import backup"
+  },
+  "backupConfirm": {
+    "message": "Import $COUNT$ recorded sessions and the settings from this file? Existing sessions are kept and duplicates are skipped.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "statusBackupSaved": {
+    "message": "Backup saved."
+  },
+  "statusBackupUnreadable": {
+    "message": "Not a readable backup file."
+  },
+  "statusBackupImported": {
+    "message": "Imported $ADDED$ new sessions ($DUP$ already here).",
+    "placeholders": {
+      "added": {
+        "content": "$1",
+        "example": "12"
+      },
+      "dup": {
+        "content": "$2",
+        "example": "3"
+      }
+    }
+  },
   "colStarted": {
     "message": "Started"
   },

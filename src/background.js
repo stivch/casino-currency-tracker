@@ -533,6 +533,86 @@ async function recordBets(rows, currency) {
   return { added, corrected, pending, unreadable, skipped, rolled, session };
 }
 
+// ------------------------------------------------------------------- backup
+//
+// History lives only in storage.local, so an uninstall takes months of
+// sessions with it. The backup is one JSON file: settings plus history. The
+// API key is deliberately left out — a credential has no business in a file
+// that ends up in download folders and cloud drives.
+
+const BACKUP_FORMAT = 'casino-currency-tracker-backup';
+const BACKUP_VERSION = 1;
+
+async function exportBackup() {
+  return {
+    format: BACKUP_FORMAT,
+    version: BACKUP_VERSION,
+    exportedAt: Date.now(),
+    settings: await loadSettings(),
+    sessionHistory: await readHistory(),
+  };
+}
+
+/** A history entry sound enough to keep. Essentials only — the rest rides along. */
+function validEntry(entry) {
+  return Boolean(entry) && typeof entry === 'object' && !Array.isArray(entry)
+    && Number.isFinite(entry.startedAt) && entry.startedAt > 0
+    && Number.isFinite(entry.endedAt) && entry.endedAt >= entry.startedAt
+    && Number.isFinite(entry.bets) && entry.bets > 0
+    && Number.isFinite(entry.wagered) && Number.isFinite(entry.returned);
+}
+
+/**
+ * Merge a backup into what is already here rather than replacing it: restoring
+ * last month's file must not delete this month's sessions. Identity is the
+ * session's own start, end and coin — two copies of the same session agree on
+ * all three, and no honest pair of different sessions shares them.
+ */
+async function importBackup(backup) {
+  if (!backup || typeof backup !== 'object' || backup.format !== BACKUP_FORMAT) {
+    throw new Error('not a backup file this extension wrote');
+  }
+  if (Number(backup.version) > BACKUP_VERSION) {
+    throw new Error('backup written by a newer version — update the extension first');
+  }
+
+  const offered = Array.isArray(backup.sessionHistory) ? backup.sessionHistory : [];
+  const incoming = offered.filter(validEntry);
+  const existing = await readHistory();
+
+  const identity = (e) => `${e.startedAt}:${e.endedAt}:${e.currency || ''}`;
+  const have = new Set(existing.map(identity));
+  const fresh = incoming.filter((e) => !have.has(identity(e)));
+
+  const merged = [...existing, ...fresh]
+    .sort((a, b) => (b.endedAt || b.startedAt || 0) - (a.endedAt || a.startedAt || 0))
+    .slice(0, HISTORY_LIMIT);
+  await chrome.storage.local.set({ sessionHistory: merged });
+
+  // Settings come along only when the file carries them, filtered to keys this
+  // build knows and run through the same sanitiser every UI write goes through
+  // — a hand-edited file earns the same distrust as a hand-typed field.
+  let settingsApplied = false;
+  if (backup.settings && typeof backup.settings === 'object') {
+    const known = {};
+    for (const key of Object.keys(DEFAULTS)) {
+      if (key in backup.settings) known[key] = backup.settings[key];
+    }
+    if (Object.keys(known).length) {
+      await chrome.storage.sync.set(sanitize(known));
+      settingsApplied = true;
+    }
+  }
+
+  return {
+    added: fresh.length,
+    duplicates: incoming.length - fresh.length,
+    invalid: offered.length - incoming.length,
+    total: merged.length,
+    settingsApplied,
+  };
+}
+
 // --------------------------------------------------------------- stake meta
 //
 // Rakeback and VIP progress, read out of Stake's own GraphQL traffic by the
@@ -1121,6 +1201,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => { // es
         await chrome.storage.local.remove('sessionHistory');
         sendResponse({ error: null, history: [], totals: {} });
         break;
+
+      case 'exportBackup':
+        sendResponse({ error: null, backup: await exportBackup() });
+        break;
+
+      case 'importBackup': {
+        const result = await importBackup(message.backup);
+        await mirrorState();
+        sendResponse({ error: null, ...result });
+        break;
+      }
 
       default:
         sendResponse({ error: `unknown message type: ${message?.type}` });

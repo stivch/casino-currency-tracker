@@ -313,6 +313,20 @@
     </div>
   </div>
 
+  <h2 data-i18n="optBackup">Backup</h2>
+  <p class="hint" data-i18n="optBackupIntro">Everything lives on this machine, so uninstalling the extension deletes the
+    history with it. The backup is one JSON file — settings and recorded sessions, no API key. Importing merges:
+    existing sessions are kept and duplicates are skipped, so restoring an old file never deletes a newer session.</p>
+
+  <div class="group">
+    <div class="row">
+      <span class="grow"><span class="sub" id="backupNote"></span></span>
+      <button class="ghost" id="exportBackup" data-i18n="optExportBackup">Export backup</button>
+      <button class="ghost" id="importBackup" data-i18n="optImportBackup">Import backup</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+    </div>
+  </div>
+
   <button class="wide" id="reset" data-i18n="optResetAll">Reset everything to defaults</button>
   <p class="hint" id="status"></p>
 
