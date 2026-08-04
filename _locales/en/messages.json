@@ -512,6 +512,66 @@
   "statusNoBets": {
     "message": "No bets in the current session yet."
   },
+  "optMirrors": {
+    "message": "Other domains"
+  },
+  "optMirrorsIntro": {
+    "message": "Both casinos answer on more than one domain, and which ones exist changes without notice. Add one here and the extension will run on it as well. Say which casino it is — a Duel domain read as Stake looks for a bet table that does not exist and reports nothing wrong, so this is not guessed from the name. Chrome will ask you to allow access; that permission is per-machine and you can withdraw it at any time from Chrome's own extension settings."
+  },
+  "optMirrorAdd": {
+    "message": "Add"
+  },
+  "mirrorRemove": {
+    "message": "Remove"
+  },
+  "mirrorActive": {
+    "message": "running here"
+  },
+  "mirrorNoPermission": {
+    "message": "not allowed yet — remove it and add it again to be asked"
+  },
+  "mirrorTypeHost": {
+    "message": "Type a domain first, like example.com."
+  },
+  "mirrorBadHost": {
+    "message": "“$HOST$” is not a plain domain — no https://, no path, no wildcard.",
+    "placeholders": {
+      "host": {
+        "content": "$1",
+        "example": "duel.limited"
+      }
+    }
+  },
+  "mirrorAlready": {
+    "message": "$HOST$ is already on the list.",
+    "placeholders": {
+      "host": {
+        "content": "$1",
+        "example": "duel.limited"
+      }
+    }
+  },
+  "mirrorDeclined": {
+    "message": "Chrome did not grant access, so nothing was added."
+  },
+  "mirrorAdded": {
+    "message": "Running on $HOST$ now. Reload any tab already open there.",
+    "placeholders": {
+      "host": {
+        "content": "$1",
+        "example": "duel.limited"
+      }
+    }
+  },
+  "mirrorRemoved": {
+    "message": "Stopped running on $HOST$.",
+    "placeholders": {
+      "host": {
+        "content": "$1",
+        "example": "duel.limited"
+      }
+    }
+  },
   "optBackup": {
     "message": "Backup"
   },

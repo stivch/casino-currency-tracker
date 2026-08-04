@@ -9,7 +9,7 @@
 // mirrored into chrome.storage.local, which content scripts can read and watch
 // without the "tabs" permission that a targeted broadcast would cost.
 
-import { DEFAULTS, TARGET_CURRENCIES, loadSettings, sanitize } from './lib/settings.js';
+import { DEFAULTS, TARGET_CURRENCIES, loadSettings, mirrorOrigins, sanitize } from './lib/settings.js';
 import { fetchFiatTable, fetchRate, pingKey, ratesFromDuel, ratesFromStake } from './lib/rates.js';
 import { coinRate, coinUsd, compactMoney, displayDecimals, effectiveRate, formatMoney } from './lib/format.js';
 import { t, useMessages } from './lib/i18n.js';
@@ -545,6 +545,91 @@ async function recordBets(rows, currency) {
     await mirrorState();
   }
   return { added, corrected, pending, unreadable, skipped, rolled, session };
+}
+
+// ------------------------------------------------------------------ mirrors
+//
+// Both casinos answer on several domains, and which ones exist changes without
+// notice — so the extra ones are a setting, and the content scripts for them
+// are registered at runtime rather than listed in the manifest.
+//
+// Two registrations, because the manifest has two: the page-world bridge at
+// document_start, and the scraper plus overlay at document_idle. They must
+// match the manifest entries exactly or a mirror behaves subtly unlike the
+// domain it mirrors.
+
+const MIRROR_SCRIPT_IDS = ['mirror-bridge', 'mirror-overlay'];
+
+/** Mirrors the browser has actually granted access to. */
+async function permittedMirrors(mirrors) {
+  const out = [];
+  for (const mirror of mirrors || []) {
+    const origins = mirrorOrigins(mirror.host);
+    try {
+      if (await chrome.permissions.contains({ origins })) out.push({ ...mirror, origins });
+    } catch {
+      // A host that cannot even be asked about is not one to register.
+    }
+  }
+  return out;
+}
+
+/**
+ * Bring the registered scripts in line with the settings.
+ *
+ * Registration is dropped and rebuilt rather than diffed: the list is at most
+ * twenty hosts, this runs when the setting changes and on startup, and a diff
+ * would be more code than the thing it optimises.
+ *
+ * A permission the user has revoked in Chrome's own UI simply stops appearing
+ * in `permittedMirrors`, so revoking access is enough on its own — the setting
+ * does not have to be edited to match.
+ */
+async function syncMirrorScripts() {
+  if (!chrome.scripting?.registerContentScripts) return;
+
+  const { mirrors } = await loadSettings();
+  const granted = await permittedMirrors(mirrors);
+
+  try {
+    const existing = await chrome.scripting.getRegisteredContentScripts();
+    const ids = existing.filter((script) => MIRROR_SCRIPT_IDS.includes(script.id)).map((s) => s.id);
+    if (ids.length) await chrome.scripting.unregisterContentScripts({ ids });
+  } catch {
+    // Nothing registered yet, which is the normal case on a first run.
+  }
+
+  if (granted.length === 0) return;
+  const matches = granted.flatMap((mirror) => mirror.origins);
+
+  try {
+    await chrome.scripting.registerContentScripts([
+      {
+        id: 'mirror-bridge',
+        matches,
+        js: ['src/lib/stakebridge.js'],
+        world: 'MAIN',
+        runAt: 'document_start',
+        allFrames: false,
+        persistAcrossSessions: true,
+      },
+      {
+        id: 'mirror-overlay',
+        matches,
+        js: ['src/lib/scrape.js', 'src/content.js'],
+        runAt: 'document_idle',
+        allFrames: false,
+        persistAcrossSessions: true,
+      },
+    ]);
+  } catch (error) {
+    // Worth saying out loud: the symptom otherwise is a mirror the user added,
+    // granted permission to, and on which nothing whatsoever happens.
+    await recordDiagnostic({
+      where: 'mirrors',
+      message: `Could not run on your added domains: ${String(error?.message || error).slice(0, 160)}`,
+    });
+  }
 }
 
 // ------------------------------------------------------------------- backup
@@ -1086,6 +1171,7 @@ async function boot() {
   await discardStaleCalcSession();
   await migrateLimitKeys();
   await chrome.storage.sync.set({ ...DEFAULTS, ...(await chrome.storage.sync.get(DEFAULTS)) });
+  await syncMirrorScripts().catch(() => {});
   await rescheduleAlarm();
   await mirrorState();
   await refreshRate();
@@ -1113,9 +1199,16 @@ migrateLimitKeys().catch(() => {});
 // A woken worker may have missed alarms while suspended; top the rate up.
 refreshRate().catch(() => {});
 
+// Granting or revoking a host in Chrome's own permissions UI has to take
+// effect without the options page being involved, so both are watched here
+// rather than only where the request is made.
+chrome.permissions?.onAdded?.addListener(() => syncMirrorScripts().catch(() => {}));
+chrome.permissions?.onRemoved?.addListener(() => syncMirrorScripts().catch(() => {}));
+
 chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area !== 'sync') return;
   if ('refreshMinutes' in changes) await rescheduleAlarm();
+  if ('mirrors' in changes) await syncMirrorScripts().catch(() => {});
 
   // A new target makes every cached rate an answer to the previous question.
   // Nothing shows the stale one — readCache and liveStakeRate both refuse a

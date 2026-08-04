@@ -30,7 +30,15 @@
   // lives, what the wallet chip looks like, what to call the account box — is
   // named in lib/scrape.js and read from here; nothing else in this file
   // branches on a hostname.
-  const SITE = globalThis.StakeScrape.siteFor(location.hostname) || globalThis.StakeScrape.SITES.stake;
+  //
+  // Re-resolved once settings arrive, because a user-added mirror is not
+  // knowable from the hostname alone. Until then a built-in host answers
+  // correctly and anything else assumes Stake, which is the shape of every
+  // site this runs on bar one.
+  const resolveSite = (mirrors) =>
+    globalThis.StakeScrape.siteFor(location.hostname, mirrors) || globalThis.StakeScrape.SITES.stake;
+
+  let SITE = resolveSite(null);
 
   // The language the service worker resolved, published under its own storage
   // key. chrome.i18n is the fallback underneath it — it can only ever answer
@@ -1424,6 +1432,12 @@
     const config = {
       channel: BRIDGE_CHANNEL,
       kind: 'config',
+      // Which adapter the bridge should use. It cannot work this out for a
+      // user-added mirror — it runs in the page's world with no access to
+      // settings — so the answer is resolved here and handed over. It rides on
+      // the config that already exists rather than a message of its own,
+      // because nothing is inspected until that config arrives.
+      site: SITE.id,
       capture,
       // Two independent switches: one reads the account, the other reads the
       // price table. Neither implies the other.
@@ -1599,10 +1613,18 @@
     // as often as somebody opens the options page.
     const retitle = Boolean(host) && settings && settings.targetCurrency !== state.settings.targetCurrency;
 
+    // A mirror declared in settings can change which casino this page is, and
+    // the account box bakes the site's name in when it is built — so a change
+    // here is a rebuild, exactly like a change of target currency. It settles
+    // on the first state write and then never moves again.
+    const resolved = resolveSite(state.settings.mirrors);
+    const resite = resolved.id !== SITE.id;
+    SITE = resolved;
+
     settings = state.settings;
     rate = state.rate;
     session = state.session;
-    if (retitle) teardown();
+    if (retitle || resite) teardown();
     // A new reading is the answer to a refresh, so the button stops spinning on
     // the data landing rather than on its timeout.
     const account = state.stake || null;

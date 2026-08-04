@@ -316,6 +316,26 @@
     </div>
   </div>
 
+  <h2 data-i18n="optMirrors">Other domains</h2>
+  <p class="hint" data-i18n="optMirrorsIntro">Both casinos answer on more than one domain, and which ones exist changes
+    without notice. Add one here and the extension will run on it as well. Say which casino it is — a Duel domain read
+    as Stake looks for a bet table that does not exist and reports nothing wrong, so this is not guessed from the name.
+    Chrome will ask you to allow access; that permission is per-machine and you can withdraw it at any time from
+    Chrome's own extension settings.</p>
+
+  <div class="group">
+    <div class="row">
+      <input type="text" id="mirrorHost" class="grow-input" placeholder="example.com" autocomplete="off" spellcheck="false">
+      <select id="mirrorSite">
+        <option value="stake">Stake</option>
+        <option value="duel">Duel</option>
+      </select>
+      <button id="addMirror" data-i18n="optMirrorAdd">Add</button>
+    </div>
+  </div>
+  <div id="mirrorList" class="group" hidden></div>
+  <p class="hint" id="mirrorMsg"></p>
+
   <h2 data-i18n="optBackup">Backup</h2>
   <p class="hint" data-i18n="optBackupIntro">Everything lives on this machine, so uninstalling the extension deletes the
     history with it. The backup is one JSON file — settings and recorded sessions, no API key. Importing merges:

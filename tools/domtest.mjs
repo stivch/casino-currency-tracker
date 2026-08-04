@@ -159,6 +159,31 @@ console.log('\n-- which site');
   check('an unrelated duel TLD is not Duel', siteFor('duel.example'), null);
 }
 
+console.log('\n-- user-added mirrors');
+{
+  const mirrors = [{ host: 'duel.example', site: 'duel' }, { host: 'mirror.test', site: 'stake' }];
+
+  check('a declared Duel mirror is Duel', siteFor('duel.example', mirrors)?.id, 'duel');
+  check('and reads its ledger off an API', siteFor('duel.example', mirrors)?.ledger, 'api');
+  check('a declared Stake mirror is Stake', siteFor('mirror.test', mirrors)?.id, 'stake');
+  check('a subdomain of a mirror counts', siteFor('www.duel.example', mirrors)?.id, 'duel');
+
+  // The suffix has to be a real label boundary, or a mirror declared as
+  // "duel.example" would answer for "evilduel.example".
+  check('a lookalike of a mirror does not count', siteFor('evilduel.example', mirrors), null);
+  check('a mirror as somebody else’s subdomain does not count',
+    siteFor('duel.example.evil.net', mirrors), null);
+
+  // A settings list must never be able to reassign a domain the extension
+  // already knows: the built-ins are matched first.
+  check('a mirror cannot turn stake.com into Duel',
+    siteFor('stake.com', [{ host: 'stake.com', site: 'duel' }])?.id, 'stake');
+
+  check('an unknown site id is refused', siteFor('x.test', [{ host: 'x.test', site: 'nope' }]), null);
+  check('no mirrors is the old behaviour', siteFor('duel.example'), null);
+  check('a junk list is ignored', siteFor('duel.example', 'nonsense'), null);
+}
+
 console.log('\n-- the two host lists agree');
 {
   // lib/stakebridge.js runs in the page's own world, so it cannot import

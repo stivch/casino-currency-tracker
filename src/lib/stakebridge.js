@@ -463,7 +463,17 @@
   // the copy is forced; tools/domtest.mjs checks the two agree.
   const DUEL_HOSTS = /(^|\.)duel\.(com|limited|vip|net)$/i;
 
-  const SITE = DUEL_HOSTS.test(window.location.hostname) ? DUEL : STAKE;
+  const ADAPTERS = { stake: STAKE, duel: DUEL };
+
+  // The hostname answers for every built-in domain. A user-added mirror it
+  // cannot answer for at all, so the content script — which can read settings —
+  // names the site on the config message and this is replaced before anything
+  // is read.
+  //
+  // Waiting for that config costs nothing: `wants` starts all-false and the
+  // fetch wrapper returns before touching the adapter until it is configured,
+  // so there is no window in which the wrong one can inspect a request.
+  let SITE = DUEL_HOSTS.test(window.location.hostname) ? DUEL : STAKE;
 
   const wants = { account: false, rates: false, bets: false };
   let accountTimer = null;
@@ -572,6 +582,11 @@
   const every = (fn, seconds, floor) => setInterval(fn, Math.max(floor, Number(seconds) || floor) * 1000);
 
   function configure(config) {
+    // Before anything reads SITE below: wants.bets is decided by the adapter's
+    // own capability, so choosing the adapter second would gate the new site's
+    // ledger on the old site's answer.
+    if (config.site && ADAPTERS[config.site]) SITE = ADAPTERS[config.site];
+
     wants.account = Boolean(config.capture);
     wants.rates = Boolean(config.rates);
     wants.bets = Boolean(config.bets) && SITE.readsBets;

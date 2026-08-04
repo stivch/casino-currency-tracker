@@ -58,11 +58,29 @@
   const DUEL_HOSTS = /(^|\.)duel\.(com|limited|vip|net)$/;
   const STAKE_HOSTS = /(^|\.)stake\.(com|bet|games|us)$/;
 
-  /** Which casino a hostname is, or null for anywhere else. */
-  function siteFor(hostname) {
+  /**
+   * Which casino a hostname is, or null for anywhere else.
+   *
+   * @param mirrors  The user's extra hosts, [{host, site}]. Consulted only
+   *                 after the built-in patterns, so nothing in a settings list
+   *                 can turn stake.com into something else. A mirror matches
+   *                 its own host and subdomains of it, and by suffix rather
+   *                 than substring — otherwise "evilduel.com" would answer for
+   *                 a mirror declared as "duel.com".
+   */
+  function siteFor(hostname, mirrors) {
     const host = String(hostname || '').toLowerCase();
+    if (!host) return null;
+
     if (DUEL_HOSTS.test(host)) return SITES.duel;
     if (STAKE_HOSTS.test(host)) return SITES.stake;
+
+    for (const entry of Array.isArray(mirrors) ? mirrors : []) {
+      const declared = String(entry?.host || '').toLowerCase();
+      if (!declared) continue;
+      if (host === declared || host.endsWith(`.${declared}`)) return SITES[entry.site] || null;
+    }
+
     return null;
   }
 

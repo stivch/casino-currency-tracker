@@ -3,7 +3,7 @@ import { applyI18n, t, useMessages } from './lib/i18n.js';
 import { currencySymbol, formatMoney } from './lib/format.js';
 import { fiscalYearOf, restate } from './lib/session.js';
 import { limitSwitchText } from './lib/notices.js';
-import { DEFAULTS, TARGET_CURRENCIES } from './lib/settings.js';
+import { DEFAULTS, TARGET_CURRENCIES, mirrorOrigins, sanitizeMirrors } from './lib/settings.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -104,6 +104,7 @@ function render() {
   $('limitSwitchNote').textContent = switched;
 
   renderDiagnostics();
+  renderMirrors();
 
   renderKey();
   renderBetLog();
@@ -121,6 +122,107 @@ function render() {
     ? settings.trackedSelector
     : t('optPinnedSub', 'Use “Pin an amount on the page” in the overlay on Stake.');
   $('clearPin').disabled = !pinned;
+}
+
+// ---------------------------------------------------------------- mirrors
+//
+// A host in the list and a permission for it are two different things: the
+// list follows the Chrome profile, the permission does not. So each row says
+// which of the two it has, because "added it and nothing happens" is otherwise
+// indistinguishable from a broken extension.
+
+const SITE_LABELS = { stake: 'Stake', duel: 'Duel' };
+
+async function mirrorGranted(host) {
+  try {
+    return await chrome.permissions.contains({ origins: mirrorOrigins(host) });
+  } catch {
+    return false;
+  }
+}
+
+async function renderMirrors() {
+  const mirrors = state?.settings?.mirrors || [];
+  const list = $('mirrorList');
+
+  list.hidden = mirrors.length === 0;
+  if (mirrors.length === 0) {
+    list.innerHTML = '';
+    return;
+  }
+
+  const rows = await Promise.all(mirrors.map(async (mirror) => {
+    const granted = await mirrorGranted(mirror.host);
+    const note = granted
+      ? t('mirrorActive', 'running here', [])
+      : t('mirrorNoPermission', 'not allowed yet — remove it and add it again to be asked', []);
+    return `<div class="row">
+      <span class="grow"><span class="label">${escapeHtml(mirror.host)}</span>
+        <span class="sub">${SITE_LABELS[mirror.site] || mirror.site} · <span class="${granted ? 'good' : 'warn'}">${note}</span></span></span>
+      <button class="ghost" data-mirror="${escapeHtml(mirror.host)}">${t('mirrorRemove', 'Remove')}</button>
+    </div>`;
+  }));
+
+  list.innerHTML = rows.join('');
+  for (const button of list.querySelectorAll('[data-mirror]')) {
+    button.addEventListener('click', () => removeMirror(button.dataset.mirror));
+  }
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function mirrorNote(text, tone = '') {
+  $('mirrorMsg').className = tone ? `hint ${tone}` : 'hint';
+  $('mirrorMsg').textContent = text;
+}
+
+async function addMirror() {
+  const host = $('mirrorHost').value.trim().toLowerCase();
+  const site = $('mirrorSite').value;
+  if (!host) return mirrorNote(t('mirrorTypeHost', 'Type a domain first, like example.com.'));
+
+  // Validated with the same function the service worker uses, so what is
+  // accepted here and what is stored cannot disagree.
+  const [clean] = sanitizeMirrors([{ host, site }]);
+  if (!clean) {
+    return mirrorNote(t('mirrorBadHost',
+      `“${host}” is not a plain domain — no https://, no path, no wildcard.`, [host]), 'warn');
+  }
+
+  const existing = state.settings.mirrors || [];
+  if (existing.some((m) => m.host === clean.host)) {
+    return mirrorNote(t('mirrorAlready', `${clean.host} is already on the list.`, [clean.host]));
+  }
+
+  // Must happen inside the click, and before the setting is written: a host
+  // saved without permission is a row that looks added and does nothing.
+  let granted = false;
+  try {
+    granted = await chrome.permissions.request({ origins: mirrorOrigins(clean.host) });
+  } catch (error) {
+    return mirrorNote(String(error?.message || error), 'warn');
+  }
+  if (!granted) return mirrorNote(t('mirrorDeclined', 'Chrome did not grant access, so nothing was added.'), 'warn');
+
+  await patch({ mirrors: [...existing, clean] });
+  $('mirrorHost').value = '';
+  mirrorNote(t('mirrorAdded', `Running on ${clean.host} now. Reload any tab already open there.`, [clean.host]), 'good');
+}
+
+async function removeMirror(host) {
+  const rest = (state.settings.mirrors || []).filter((m) => m.host !== host);
+  await patch({ mirrors: rest });
+  // Handing the permission back matters: leaving it granted would keep access
+  // to a site the user has just said they do not want this running on.
+  try {
+    await chrome.permissions.remove({ origins: mirrorOrigins(host) });
+  } catch {
+    // Nothing to hand back, which is fine.
+  }
+  mirrorNote(t('mirrorRemoved', `Stopped running on ${host}.`, [host]));
 }
 
 // ------------------------------------------------------------ history view
@@ -656,6 +758,12 @@ for (const id of LIMITS) {
       : `“${raw}” is not ${noun} — needs a number above zero. Left off.`);
   });
 }
+
+$('addMirror').addEventListener('click', () => { addMirror().catch((e) => mirrorNote(String(e?.message || e), 'warn')); });
+
+$('mirrorHost').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') $('addMirror').click();
+});
 
 $('clearDiagnostics').addEventListener('click', async () => {
   state = await send({ type: 'clearDiagnostics' });

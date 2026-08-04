@@ -72,6 +72,11 @@ p.hint { color: var(--muted); font-size: 11.5px; line-height: 1.55; margin: 6px 
 .hint.warn { color: var(--warn); }
 .hint.good { color: var(--accent); }
 
+/* The same two colours as a plain text class, for a phrase inside a line that
+   is not itself a hint — a mirror row saying whether it is running. */
+.warn { color: var(--warn); }
+.good { color: var(--accent); }
+
 /* ------------------------------------------------------------------- popup */
 
 /* Cards, not bands. Each one is a thing you can look at on its own, which is

@@ -146,6 +146,21 @@ export const DEFAULTS = {
   // Set to a number to ignore the providers entirely and use your own rate.
   manualRate: null,
 
+  // Extra hostnames the casinos answer on, as [{host, site}].
+  //
+  // Both sites run the same app on several domains, and which ones exist
+  // changes without notice — so they are a setting rather than a list baked
+  // into the manifest. Each entry names which casino it is: guessing from a
+  // hostname is exactly the mistake this avoids, since a Duel mirror read as
+  // Stake watches for a bet table that does not exist and reports nothing
+  // wrong.
+  //
+  // A host here does nothing on its own. The extension only runs on it once
+  // the browser has been asked for permission, from the options page, and that
+  // permission is per-machine — so this list syncing between machines does not
+  // carry the access with it.
+  mirrors: [],
+
   // The element pinned by the picker, so the HUD can read a live balance.
   trackedSelector: '',
   trackedLabel: '',
@@ -154,6 +169,50 @@ export const DEFAULTS = {
   hudRight: 16,
   hudBottom: 16,
 };
+
+/** Casinos a mirror may be declared as. Anything else is not an adapter. */
+export const MIRROR_SITES = ['stake', 'duel'];
+
+/** More than anyone has, and low enough that the list stays reviewable. */
+const MIRROR_LIMIT = 20;
+
+/**
+ * A bare hostname: no scheme, no port, no path, no wildcard, at least one dot.
+ *
+ * Deliberately strict. Every accepted value here becomes a host permission
+ * request and a content-script match pattern, and "*" in the wrong place is
+ * the difference between one casino and every site the user visits.
+ */
+const HOSTNAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+
+/** The origins a mirror needs before the extension may run on it. */
+export function mirrorOrigins(host) {
+  return [`https://${host}/*`, `https://*.${host}/*`];
+}
+
+/**
+ * Clean a mirror list into something safe to register content scripts against.
+ * Anything that does not survive is dropped rather than corrected.
+ */
+export function sanitizeMirrors(list) {
+  const out = [];
+  const seen = new Set();
+
+  for (const entry of Array.isArray(list) ? list : []) {
+    const host = String(entry?.host || '').trim().toLowerCase().replace(/\.$/, '');
+    const site = String(entry?.site || '').trim().toLowerCase();
+
+    if (!HOSTNAME_RE.test(host)) continue;
+    if (!MIRROR_SITES.includes(site)) continue;
+    if (seen.has(host)) continue;
+
+    seen.add(host);
+    out.push({ host, site });
+    if (out.length >= MIRROR_LIMIT) break;
+  }
+
+  return out;
+}
 
 export async function loadSettings() {
   const stored = await chrome.storage.sync.get(DEFAULTS);
@@ -222,6 +281,8 @@ export function sanitize(patch) {
     const code = String(out[field] || '').toUpperCase();
     out[field] = TARGET_CURRENCIES.includes(code) ? code : DEFAULTS[field];
   }
+
+  if ('mirrors' in out) out.mirrors = sanitizeMirrors(out.mirrors);
 
   if ('manualRate' in out) {
     const n = Number(out.manualRate);

@@ -3,6 +3,19 @@
 The version in `manifest.json` is the single source of truth; a release is a
 `v<version>` tag, and CI attaches the zip to it.
 
+## Unreleased
+
+- **Other domains.** Duel's `duel.limited`, `duel.vip` and `duel.net` now work
+  out of the box, and any further domain can be added from Options with no code
+  edit and no reload — the extension asks Chrome for access to that host and
+  registers its content scripts at runtime.
+- Fixes a silent failure: an unrecognised Duel domain fell through to the Stake
+  adapter, so it watched for a bet table that does not exist and session
+  tracking was dead with no fault reported anywhere.
+- Stake's header capture now happens only on the account operations it can
+  actually replay, rather than on any request to the GraphQL endpoint.
+- `ROADMAP.md` and `docs/ADAPTERS.md`.
+
 ## 1.4.0
 
 - Renamed to **Casino Currency Tracker** — the old name led with a third-party

@@ -6,12 +6,14 @@
   "default_locale": "en",
   "minimum_chrome_version": "111",
 
-  "permissions": ["storage", "alarms", "notifications"],
+  "permissions": ["storage", "alarms", "notifications", "scripting"],
 
   "host_permissions": [
     "https://api.coingecko.com/*",
     "https://open.er-api.com/*"
   ],
+
+  "optional_host_permissions": ["https://*/*"],
 
   "background": {
     "service_worker": "src/background.js",

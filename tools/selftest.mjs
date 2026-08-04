@@ -746,6 +746,44 @@ console.log('\n-- badge');
   check('nothing to show is empty', compactMoney(null), '');
 }
 
+console.log('\n-- mirror hosts');
+{
+  const { sanitizeMirrors, mirrorOrigins } = await import('../src/lib/settings.js');
+  const only = (list) => sanitizeMirrors(list).map((m) => `${m.host}:${m.site}`);
+
+  check('a plain host survives', only([{ host: 'duel.limited', site: 'duel' }]), ['duel.limited:duel']);
+  check('case and a trailing dot are normalised',
+    only([{ host: 'Duel.Limited.', site: 'duel' }]), ['duel.limited:duel']);
+  check('whitespace is trimmed', only([{ host: '  x.test ', site: 'stake' }]), ['x.test:stake']);
+
+  // Everything accepted here becomes a host permission and a content-script
+  // match pattern, so each of these is a real hole rather than a tidiness rule.
+  check('a wildcard is refused', only([{ host: '*.duel.com', site: 'duel' }]), []);
+  check('a bare wildcard is refused', only([{ host: '*', site: 'duel' }]), []);
+  check('a scheme is refused', only([{ host: 'https://duel.com', site: 'duel' }]), []);
+  check('a path is refused', only([{ host: 'duel.com/evil', site: 'duel' }]), []);
+  check('a port is refused', only([{ host: 'duel.com:8080', site: 'duel' }]), []);
+  check('a bare word with no dot is refused', only([{ host: 'localhost', site: 'duel' }]), []);
+  check('an unknown site is refused', only([{ host: 'x.test', site: 'roobet' }]), []);
+  check('a missing site is refused', only([{ host: 'x.test' }]), []);
+  check('junk is refused', only(['x.test', null, 42]), []);
+  check('not a list at all', sanitizeMirrors('duel.com'), []);
+
+  check('duplicates collapse',
+    only([{ host: 'x.test', site: 'duel' }, { host: 'X.TEST', site: 'stake' }]), ['x.test:duel']);
+
+  const many = Array.from({ length: 40 }, (_, i) => ({ host: `h${i}.test`, site: 'stake' }));
+  check('the list is capped', sanitizeMirrors(many).length, 20);
+
+  check('origins cover the host and its subdomains',
+    mirrorOrigins('duel.limited'), ['https://duel.limited/*', 'https://*.duel.limited/*']);
+
+  // sanitize() is the door every settings write goes through.
+  check('sanitize cleans the list on the way in',
+    sanitize({ mirrors: [{ host: 'GOOD.test', site: 'duel' }, { host: '*', site: 'duel' }] }).mirrors,
+    [{ host: 'good.test', site: 'duel' }]);
+}
+
 console.log('\n-- i18n');
 {
   // The pages run inside Chrome; the module only needs chrome.i18n to exist so

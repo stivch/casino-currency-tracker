@@ -339,5 +339,56 @@ console.log('\n-- Stake: still reads its own traffic, and asks for nothing');
   check('and no bet reading is attempted there', page.kindsOf('bets'), []);
 }
 
+console.log('\n-- the adapter follows the config, not the hostname');
+{
+  // A user-added mirror is a hostname the bridge cannot recognise, so the
+  // content script names the site on the config message. Without this a Duel
+  // mirror gets the Stake adapter, never reads its transaction feed, and
+  // reports nothing wrong — the quietest failure this extension has.
+  const page = loadBridge('duel-mirror.test', {
+    '/api/v2/user/transactions': DUEL_TRANSACTIONS,
+    '/api/v2/user/rakeback': DUEL_RAKEBACK,
+  });
+
+  page.sendIn({ kind: 'config', site: 'duel', capture: false, rates: false, bets: true, poll: false, betSeconds: 15 });
+  await page.settle();
+
+  check('an unknown host told it is Duel reads the ledger', page.kindsOf('bets').length > 0, true);
+  check('and asked Duel’s own endpoint for it',
+    page.requested.some((url) => String(url).includes('/api/v2/user/transactions')), true);
+}
+
+{
+  // And the reverse: naming Stake must not start the bet poll, because Stake's
+  // ledger is the table on the page.
+  const page = loadBridge('stake-mirror.test', { '/api/v2/user/transactions': DUEL_TRANSACTIONS });
+
+  page.sendIn({ kind: 'config', site: 'stake', capture: false, rates: false, bets: true, poll: false, betSeconds: 15 });
+  await page.settle();
+
+  check('a mirror told it is Stake reads no bet ledger', page.kindsOf('bets'), []);
+  check('and asks for nothing', page.requested, []);
+}
+
+{
+  // A config with no site at all is every build before this one, and the
+  // hostname must still decide.
+  const page = loadBridge('duel.limited', { '/api/v2/user/transactions': DUEL_TRANSACTIONS });
+
+  page.sendIn({ kind: 'config', capture: false, rates: false, bets: true, poll: false, betSeconds: 15 });
+  await page.settle();
+  check('a Duel domain with no site named still reads bets', page.kindsOf('bets').length > 0, true);
+}
+
+{
+  // An unrecognised site id must leave the hostname's answer alone rather than
+  // land on some default.
+  const page = loadBridge('duel.com', { '/api/v2/user/transactions': DUEL_TRANSACTIONS });
+
+  page.sendIn({ kind: 'config', site: 'roobet', capture: false, rates: false, bets: true, poll: false, betSeconds: 15 });
+  await page.settle();
+  check('an unknown site id does not unseat the hostname', page.kindsOf('bets').length > 0, true);
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall passed');
 process.exit(failures ? 1 : 0);

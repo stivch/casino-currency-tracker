@@ -616,13 +616,28 @@ moves.
 
 ## Other domains
 
-`manifest.json` matches `stake.com`, `stake.bet`, `stake.games`, `stake.us` and `duel.com`,
-each with its subdomains. Duel also answers on `duel.limited`, `duel.vip` and `duel.net`; those
-are not matched by default. For any mirror not on the list, add it to **both** entries in
-`content_scripts` — the page-world reader and the overlay are separate injections — and add it
-to the matching branch of `siteFor()` in `src/lib/scrape.js` and the hostname test at the bottom
-of `src/lib/stakebridge.js`, or the extension will load on it and treat it as Stake. Then reload
-at `chrome://extensions`.
+Built in: `stake.com`, `stake.bet`, `stake.games`, `stake.us`, and `duel.com`, `duel.limited`,
+`duel.vip`, `duel.net` — each with its subdomains.
+
+**Anything else is added from Options → *Other domains*, with no code edit and no reload.** Type
+the domain, say which casino it is, and Chrome asks whether to allow it. Removing the row hands
+the permission back.
+
+You have to say which casino, because it cannot be guessed and guessing wrong is the quietest
+failure this extension has: a Duel domain read as Stake watches for a bet table that does not
+exist, so session tracking is simply dead and nothing reports a fault. That is also why the
+built-in list is matched first — a domain the extension already knows cannot be reassigned by a
+settings entry.
+
+The permission is per machine. The list itself follows your Chrome profile, so on a second
+machine a mirror appears in the list marked as not yet allowed, and re-adding it asks for
+access there.
+
+Under the hood this registers the same two content scripts the manifest declares — the
+page-world reader at `document_start` and the scraper plus overlay at `document_idle` — via
+`chrome.scripting.registerContentScripts`. See [docs/ADAPTERS.md](docs/ADAPTERS.md) for what an
+adapter has to guarantee, and why a genuinely new casino needs its traffic captured first rather
+than a hostname added here.
 
 ## Development
 
@@ -691,9 +706,18 @@ src/
 tools/               icon generator, self-test, DOM test, bridge test
 ```
 
-Everything that knows which casino it is on is in three places and nowhere else: `siteFor()` in
-`lib/scrape.js`, the `STAKE` and `DUEL` adapters in `lib/stakebridge.js`, and the `matches` lists
-in the manifest. Nothing else branches on a hostname.
+Everything that knows which casino it is on is in four places and nowhere else: `siteFor()` in
+`lib/scrape.js`, the `STAKE` and `DUEL` adapters in `lib/stakebridge.js`, the `matches` lists in
+the manifest, and the user's own *Other domains* list. Nothing else branches on a hostname —
+`content.js` and the bridge both read a resolved site rather than testing one.
+
+The bridge is the awkward case: it runs in the page's own world, so it can read neither the
+settings nor `siteFor()`. It is therefore *told* which site it is on, on the config message the
+content script already sends, and falls back to its own copy of the built-in host pattern.
+That copy is the one duplication here, and `tools/domtest.mjs` asserts the two agree — if they
+drift, a mirror is Duel to one layer and Stake to the other.
+
+[docs/ADAPTERS.md](docs/ADAPTERS.md) is the contract for adding a casino.
 
 State flows one way: settings live in `chrome.storage.sync`, the rate cache in
 `chrome.storage.local`, and the service worker mirrors both into a single `mirror` key that the
