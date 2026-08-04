@@ -3,6 +3,18 @@
 The version in `manifest.json` is the single source of truth; a release is a
 `v<version>` tag, and CI attaches the zip to it.
 
+## Unreleased
+
+- **Loss-chasing notice.** One desktop notice per session when the stakes reach
+  around three times what the session opened with *while it is down*. Raising
+  stakes to win back losses is close to invisible from the inside, because each
+  raise on its own looks reasonable and nothing adds them up. The opening pace
+  is frozen from the session's first ten bets rather than read back from the
+  per-bet log, which only holds the last fifty — by the time a session has
+  escalated, what it opened with has fallen out of it. It reports the figures
+  and nothing else: no advice, and nothing is blocked. Off switch in Options →
+  *Alerts*.
+
 ## 1.5.0 — 5 August 2026
 
 - **Double-counting guard.** On Stake two readers see every original — the game

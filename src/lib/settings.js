@@ -109,6 +109,12 @@ export const DEFAULTS = {
   // Stake tab is the one you are looking at.
   notifyLimits: true,
 
+  // Say something when a session's stakes have climbed well past what it
+  // opened with, while it is down. On by default, and once per session: it is
+  // the one reading here that is about the player rather than the money, and a
+  // thing you would want said to you is not a thing to make you find first.
+  notifyChasing: true,
+
   // Read the rakeback balance and VIP progress out of the GraphQL responses
   // Stake's own app already receives. Off by default: it reads an account API
   // rather than the page, which is a different kind of thing to be doing.

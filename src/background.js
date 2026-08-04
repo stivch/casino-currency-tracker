@@ -11,10 +11,10 @@
 
 import { DEFAULTS, TARGET_CURRENCIES, loadSettings, mirrorOrigins, sanitize } from './lib/settings.js';
 import { fetchFiatTable, fetchRate, pingKey, ratesFromDuel, ratesFromStake } from './lib/rates.js';
-import { coinRate, coinUsd, compactMoney, displayDecimals, effectiveRate, formatMoney } from './lib/format.js';
+import { coinRate, coinUsd, compactMoney, displayDecimals, effectiveRate, formatMoney, formatNumber } from './lib/format.js';
 import { t, useMessages } from './lib/i18n.js';
 import {
-  CALC_VERSION, applyBalance, applyFunds, archiveEntry, emptySession, ingest, isStale,
+  CALC_VERSION, applyBalance, applyFunds, archiveEntry, chaseStatus, emptySession, ingest, isStale,
   limitStatus, reconcile, rollSession, sessionProfit, summarise,
 } from './lib/session.js';
 
@@ -1074,6 +1074,49 @@ async function notifyCrossings(state) {
   });
 }
 
+/**
+ * Say it once, when a session's stakes have climbed past what it opened with
+ * while it is down.
+ *
+ * Keyed on the session's start like the limit notices, so a reset re-arms it
+ * and a long evening is told once rather than every minute. Said plainly and
+ * without advice: it is a fact about the session, and what to do about it is
+ * not the extension's to say.
+ */
+async function notifyChasing(state) {
+  const { settings, session } = state;
+  if (!chrome.notifications) return;
+  if (!settings.notifyChasing || !settings.trackSession || !session) return;
+
+  const chase = chaseStatus(session);
+  if (!chase) return;
+
+  const notices = await readNotices();
+  if (notices.startedAt !== session.startedAt || notices.fired.includes('chase')) return;
+
+  const coin = session.currency || '';
+  try {
+    chrome.notifications.create(`chase-${session.startedAt}`, {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+      title: t('notifyChaseTitle', 'Your stakes have gone up'),
+      message: t('notifyChaseBody',
+        `This session opened around ${formatNumber(chase.opening, 8)} ${coin} a bet and is now around `
+        + `${formatNumber(chase.recent, 8)} — about ${chase.multiple.toFixed(1)}× — while down `
+        + `${formatNumber(chase.down, 8)} ${coin}.`,
+        [formatNumber(chase.opening, 8), formatNumber(chase.recent, 8), chase.multiple.toFixed(1),
+          formatNumber(chase.down, 8), coin]),
+      priority: 2,
+    });
+  } catch {
+    // A notice that cannot be shown must not take the state write with it.
+  }
+
+  await chrome.storage.local.set({
+    limitNotices: { startedAt: session.startedAt, fired: [...notices.fired, 'chase'] },
+  });
+}
+
 // ---------------------------------------------------------------- rate alert
 //
 // "Tell me when the rate is worth acting on." The rate is already fetched on
@@ -1143,6 +1186,7 @@ async function mirrorState() {
   // Neither is allowed to take the mirror down with it.
   await updateBadge(state).catch(() => {});
   await notifyCrossings(state).catch(() => {});
+  await notifyChasing(state).catch(() => {});
   await notifyRateAlert(state).catch(() => {});
 
   return state;

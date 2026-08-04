@@ -193,6 +193,15 @@
     </div>
 
     <div class="row">
+      <span class="grow"><span class="label" data-i18n="optChasing">Say when stakes climb while losing</span>
+        <span class="sub" data-i18n="optChasingSub">One notice per session, if the stakes get to around three times what the
+          session opened with while it is down. Raising stakes to win back losses is hard to notice from the inside,
+          because each raise on its own looks reasonable. It reports the figures and nothing else — no advice, and
+          nothing is blocked.</span></span>
+      <label class="switch"><input type="checkbox" id="notifyChasing"><span></span></label>
+    </div>
+
+    <div class="row">
       <span class="grow"><span class="label" id="optAlertAboveLabel">Alert when the rate rises above</span>
         <span class="sub" data-i18n="optAlertAboveSub">A desktop notice when the effective USDT rate crosses this line upward.
           Fires on the crossing, once — not again until the rate has dipped back under. Blank = off.</span></span>

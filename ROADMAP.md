@@ -87,7 +87,7 @@ sessions, wagered, and P/L. Same aggregation machinery as *By year*, a different
 
 ## Tier 2 — behavioural, and genuinely novel
 
-### 2.1 Loss-chasing detection
+### 2.1 Loss-chasing detection ✅ DONE
 
 **The gap.** Nothing looks at the *shape* of a session while it is running.
 
@@ -176,7 +176,7 @@ review already flags. Everything above stays on the descriptive side of it delib
    bets. Still to do: the expected-loss column, which needs a house-edge figure per game.
 3. ~~**1.3 per-game roll-up**~~ — done: accumulated live in `session.games`, frozen at archive.
 4. **1.4 time-of-day** — cheap, and it pairs with 1.3 in the same reporting surface.
-5. **2.1 loss-chasing** — the first thing here that is not arithmetic, and the most valuable.
+5. ~~**2.1 loss-chasing**~~ — done: one notice per session, three times the opening pace while down.
 6. **2.2 / 2.3** — after the posture question in 2.3 has been answered.
 7. **Tier 3** — whenever the casino-specific surfaces are next being worked on.
 

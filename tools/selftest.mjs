@@ -12,7 +12,7 @@ import {
 import { fetchRate, pingKey, ratesFromDuel, ratesFromStake } from '../src/lib/rates.js';
 import { DEFAULTS, TARGET_CURRENCIES, sanitize } from '../src/lib/settings.js';
 import { downsample, plotSeries } from '../src/lib/chart.js';
-import { applyBalance, applyFunds, archiveEntry, emptySession, fiscalYearOf, gamesOf, ingest, isStale, limitStatus, pushCurve, realisedRtp, reconcile, restate, rollSession, sessionProfit, summarise } from '../src/lib/session.js';
+import { applyBalance, applyFunds, archiveEntry, chaseStatus, emptySession, fiscalYearOf, gamesOf, ingest, isStale, limitStatus, pushCurve, realisedRtp, reconcile, restate, rollSession, sessionProfit, summarise } from '../src/lib/session.js';
 
 let failures = 0;
 
@@ -744,6 +744,74 @@ console.log('\n-- badge');
   check('tens of thousands drop the decimal', compactMoney(42_000), '42k');
   check('losses carry the sign', compactMoney(-320), '-320');
   check('nothing to show is empty', compactMoney(null), '');
+}
+
+console.log('\n-- loss chasing');
+{
+  // A session that opened at `open` and has been betting `now` since, with a
+  // running P/L of `profit`. Built through ingest so the opening baseline is
+  // accumulated the way a real session accumulates it.
+  const play = (open, openCount, now, nowCount, { win = 0 } = {}) => {
+    let s = emptySession('USDT', 1000);
+    let at = 1000;
+    for (let i = 0; i < openCount; i++) {
+      at += 1000;
+      s = ingest(s, [{ id: `o${i}`, source: 'round', game: 'Mines', amount: open, payout: 0 }],
+        { currency: 'USDT', now: at }).session;
+    }
+    for (let i = 0; i < nowCount; i++) {
+      at += 1000;
+      s = ingest(s, [{ id: `n${i}`, source: 'round', game: 'Mines', amount: now, payout: i < win ? now * 4 : 0 }],
+        { currency: 'USDT', now: at }).session;
+    }
+    return s;
+  };
+
+  // The case it exists for: opened at 0.1, now betting 0.5, and down.
+  const chasing = play(0.1, 10, 0.5, 15);
+  const flag = chaseStatus(chasing);
+  check('a session that escalated while losing is flagged', Boolean(flag), true);
+  check('reporting what it opened at', Number(flag.opening.toFixed(4)), 0.1);
+  check('and what it is betting now', Number(flag.recent.toFixed(4)), 0.5);
+  check('and by how much', Number(flag.multiple.toFixed(1)), 5);
+  check('and how far down it is', flag.down > 0, true);
+
+  // Everything that must NOT fire, because a detector that cries wolf is one
+  // nobody reads by the second week.
+  check('steady stakes are not chasing', chaseStatus(play(0.1, 10, 0.1, 15)), null);
+  check('a mild rise is not chasing', chaseStatus(play(0.1, 10, 0.15, 15)), null);
+  check('doubling is not enough on its own', chaseStatus(play(0.1, 10, 0.2, 15)), null);
+
+  // The one that matters most: raising stakes while *ahead* is something else
+  // entirely, and calling it chasing would be wrong about the player in a way
+  // that makes the whole feature ignorable.
+  const winning = play(0.1, 10, 0.5, 15, { win: 15 });
+  check('a session that is up is never chasing', sessionProfit(winning) > 0 && chaseStatus(winning), null);
+
+  // Too early to say anything. Ten bets in, an escalation is a mood.
+  check('a short session says nothing', chaseStatus(play(0.1, 10, 0.5, 2)), null);
+
+  // The baseline is the first ten bets, whatever they were — so a session that
+  // escalated within those ten carries the escalation into its own baseline
+  // and is harder to flag, not easier. That is the safe direction: it errs
+  // toward saying nothing rather than toward accusing somebody.
+  const early = play(0.1, 4, 0.5, 30);
+  check('the baseline is the first ten bets, mixed or not', early.openStakes, 10);
+  check('so escalating inside them raises the bar', Number((early.openTotal / 10).toFixed(3)), 0.34);
+  check('and it stays quiet', chaseStatus(early), null);
+
+  // The baseline is the session's own opening pace, not an absolute figure:
+  // somebody playing in whole coins is not chasing for playing in whole coins.
+  check('big stakes held steady are not chasing', chaseStatus(play(100, 10, 100, 15)), null);
+  check('but big stakes tripled while down are', Boolean(chaseStatus(play(100, 10, 400, 15))), true);
+
+  // The baseline is frozen, so it survives the log rolling over. A long
+  // session that escalated is exactly the case the log cannot answer alone.
+  const long = play(0.1, 10, 0.5, 80);
+  check('the opening pace is kept past the log limit', long.log.length, 50);
+  check('and is still what it is compared against', Number(chaseStatus(long).opening.toFixed(4)), 0.1);
+
+  check('no session at all is nothing', chaseStatus(null), null);
 }
 
 console.log('\n-- two readers counting one bet');

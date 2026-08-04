@@ -24,6 +24,15 @@ const SEEN_LIMIT = 400;
  */
 const LOG_LIMIT = 50;
 
+/**
+ * Bets averaged into a session's opening stake, for the loss-chasing check.
+ *
+ * Accumulated as they arrive rather than read back from `log`, which holds
+ * only the last 50 — by the time a session has escalated far enough to be
+ * worth mentioning, what it opened with has long since fallen out of it.
+ */
+const CHASE_BASELINE_BETS = 10;
+
 /** Points kept for the P/L curve before it is halved. */
 const CURVE_LIMIT = 240;
 
@@ -83,6 +92,12 @@ export function emptySession(currency = null, now = Date.now()) {
     // game name -> {game, bets, wagered, returned}. Accumulated here rather
     // than rolled up from `log` at close, which only holds the last 50 bets.
     games: {},
+    // The session's opening stakes, frozen once enough have been seen.
+    // Frozen rather than read back out of `log`, which holds only the last 50
+    // bets — by the time a session has escalated far enough to be worth
+    // saying anything about, the stakes it opened with are long gone from it.
+    openStakes: 0,
+    openTotal: 0,
     // Which reader each counted bet came from: round, table or feed. Kept so
     // that "half of these came from each" — the shape of double counting — is
     // something the extension can see rather than something you have to
@@ -478,6 +493,12 @@ export function ingest(session, rows, { currency = null, now = Date.now(), table
       const source = typeof row.source === 'string' && row.source ? row.source : 'table';
       next.sources[source] = (next.sources[source] || 0) + 1;
 
+      // The opening baseline, taken once and then left alone.
+      if (next.openStakes < CHASE_BASELINE_BETS) {
+        next.openStakes += 1;
+        next.openTotal += amount;
+      }
+
       next.seen.push(row.id);
       next.log.unshift({ id: row.id, source, game: row.game || '', amount, gross, profit, at: now });
     } else {
@@ -603,6 +624,65 @@ export function reconcile(session, { now = Date.now(), settleMs = SETTLE_MS } = 
     funded: session.funded || 0,
     settling: !agrees && (!quiet || !fresh),
   };
+}
+
+// ------------------------------------------------------------ loss chasing
+//
+// Raising your stakes to win back what you are down is the pattern that turns
+// a bad hour into a bad month, and it is close to invisible from the inside —
+// each individual raise is small and reasonable, and nothing on the page adds
+// them up. This is the one thing here that reports on the player rather than
+// on the money.
+//
+// It says nothing about whether that is wise. It reports a fact about the
+// session, the same way the loss limit does, and leaves the reading of it to
+// the person it is about.
+
+/** Bets averaged for "lately", against the opening baseline above. */
+const CHASE_RECENT_BETS = 10;
+
+/** Below this the baseline is noise, not an opening pace. */
+const CHASE_MIN_BETS = 25;
+
+/**
+ * How many times the opening stake counts as escalation.
+ *
+ * Three, because it has to clear ordinary play by a wide margin. Stakes move
+ * around constantly — a double is a normal evening, and a detector that fires
+ * on one is a detector nobody reads by the second week. Tripled while losing
+ * is not ordinary.
+ */
+const CHASE_MULTIPLE = 3;
+
+/**
+ * Is this session chasing losses?
+ *
+ * Two conditions, and both matter. The stakes have to have climbed against the
+ * session's own opening pace — not against any absolute figure, because what
+ * is large is nobody else's business — and the session has to be **down**.
+ * Somebody raising their stakes while ahead is doing something else, and
+ * calling that chasing would be wrong about them in a way that makes the whole
+ * feature ignorable.
+ *
+ * @returns {{opening:number, recent:number, multiple:number, down:number}|null}
+ */
+export function chaseStatus(session, { minBets = CHASE_MIN_BETS, multiple = CHASE_MULTIPLE } = {}) {
+  if (!session || session.bets < minBets) return null;
+  if (session.openStakes < CHASE_BASELINE_BETS) return null;
+
+  const profit = sessionProfit(session);
+  if (!(profit < 0)) return null;
+
+  const opening = session.openTotal / session.openStakes;
+  if (!(opening > 0)) return null;
+
+  const recent = (session.log || []).slice(0, CHASE_RECENT_BETS);
+  if (recent.length < CHASE_RECENT_BETS) return null;
+
+  const mean = recent.reduce((sum, bet) => sum + (Number(bet.amount) || 0), 0) / recent.length;
+  if (!(mean >= opening * multiple)) return null;
+
+  return { opening, recent: mean, multiple: mean / opening, down: -profit };
 }
 
 // -------------------------------------------------------------------- limits

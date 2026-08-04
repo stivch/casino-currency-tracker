@@ -8,7 +8,7 @@ import { CASINOS, DEFAULTS, OPTIONAL_DOMAINS, TARGET_CURRENCIES, casinoForDomain
 const $ = (id) => document.getElementById(id);
 
 const CHECKBOXES = ['enabled', 'trackSession', 'showHud', 'hoverTooltip', 'selectionTooltip',
-  'assumeUnlabeled', 'inlineAnnotate', 'showBadge', 'notifyLimits', 'stakeRates', 'trackRakeback', 'rakebackPoll'];
+  'assumeUnlabeled', 'inlineAnnotate', 'showBadge', 'notifyLimits', 'notifyChasing', 'stakeRates', 'trackRakeback', 'rakebackPoll'];
 const NUMBERS = ['refreshMinutes', 'decimals', 'feePercent', 'sessionIdleMinutes'];
 const SELECTS = ['targetCurrency', 'fiscalYearStart'];
 // Nullable: blank means "no limit", so these cannot go through the numeric path.
