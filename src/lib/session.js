@@ -626,6 +626,72 @@ export function reconcile(session, { now = Date.now(), settleMs = SETTLE_MS } = 
   };
 }
 
+// -------------------------------------------------------- what it costs
+//
+// The games take a fixed cut, and rakeback hands a fraction of that cut back.
+// Both are arithmetic on figures already recorded, and neither is visible
+// anywhere on the casino — Stake shows a rakeback balance, not what it is a
+// fraction of.
+//
+// The one thing this is careful never to imply: rakeback is a discount on
+// losing, not a way of winning. Because it is a percentage *of the house
+// edge*, it returns the same fraction of expected loss whatever is played —
+// so it scales every game's cost by the same factor and cannot make one game
+// better than another. A higher-edge game pays more rakeback for the
+// arithmetically obvious reason that it is taking more.
+
+/**
+ * What a stretch of play cost, and what it was expected to cost.
+ *
+ * @param edgePercent      House edge of the games played. One figure stands in
+ *                         for all of them until there is a per-game table.
+ * @param rakebackPercent  Fraction of the house edge handed back. Stake's own
+ *                         documentation says 3.5%; `measured` overrides it
+ *                         with what was actually observed arriving.
+ * @param earned           Rakeback seen to accrue, in coin. Null if unwatched.
+ */
+export function costReport({
+  wagered = 0, returned = 0, edgePercent = 1, rakebackPercent = 3.5, earned = null,
+} = {}) {
+  if (!(wagered > 0)) return null;
+
+  const edge = Math.max(0, Number(edgePercent) || 0) / 100;
+  const rate = Math.max(0, Number(rakebackPercent) || 0) / 100;
+
+  // What the games take on average, given enough of them.
+  const expected = wagered * edge;
+  // What they actually took. Positive means down.
+  const actual = wagered - returned;
+
+  // The gap between the two is variance, not skill and not a broken game.
+  // Named `luck` so nothing downstream is tempted to read it as anything else.
+  const luck = actual - expected;
+
+  const theoretical = expected * rate;
+  const measured = Number.isFinite(earned) && earned >= 0 ? earned : null;
+
+  // What was really handed back beats what the documentation claims, on the
+  // same principle as reading the casino's price table instead of a provider:
+  // one of them is a number, the other is a number about a number.
+  const back = measured ?? theoretical;
+
+  return {
+    wagered,
+    expected,
+    actual,
+    luck,
+    rakeback: back,
+    rakebackMeasured: measured,
+    rakebackTheoretical: theoretical,
+    // The rate actually being paid, where it can be told. Only meaningful
+    // once enough has been wagered for the accrual to be worth dividing.
+    measuredRate: measured !== null && expected > 0 ? (measured / expected) * 100 : null,
+    // The edge after everything that comes back — the figure that answers
+    // "what is this actually costing me per unit staked".
+    effectiveEdge: ((expected - back) / wagered) * 100,
+  };
+}
+
 // ------------------------------------------------------------ loss chasing
 //
 // Raising your stakes to win back what you are down is the pattern that turns

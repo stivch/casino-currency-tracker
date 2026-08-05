@@ -255,6 +255,34 @@
     </div>
   </div>
 
+  <h2 data-i18n="optCost">What it costs</h2>
+  <p class="hint" data-i18n="optCostIntro">Every game takes a fixed cut of what you stake, and rakeback hands a fraction
+    of that cut back. Neither figure is shown anywhere on the casino — Stake displays a rakeback balance, not what it is
+    a fraction of. Rakeback is a discount on losing, not a way of winning: because it is a percentage of the house edge,
+    it returns the same share of your expected loss whatever you play, so it cannot make one game better than another.
+    A higher-edge game pays more rakeback because it is taking more.</p>
+
+  <div class="group">
+    <div class="row">
+      <span class="grow"><span class="label" data-i18n="optEdge">House edge %</span>
+        <span class="sub" data-i18n="optEdgeSub">The cut the games you play take. Stake's own originals — dice, limbo,
+          mines and the rest — are 99% RTP, so 1%. Slots are usually higher and vary per title; a slot's RTP is on its
+          own info panel. One figure stands in for every game for now.</span></span>
+      <input type="text" id="houseEdgePercent" inputmode="decimal">
+    </div>
+
+    <div class="row">
+      <span class="grow"><span class="label" data-i18n="optRakeback">Rakeback % of the edge</span>
+        <span class="sub" data-i18n="optRakebackSub">Stake's help centre says 3.5% of the house edge; some third-party
+          calculators say 5%. Only used until the extension has watched enough rakeback actually arrive, at which point
+          it reports the rate you are really being paid instead.</span></span>
+      <input type="text" id="rakebackPercent" inputmode="decimal">
+    </div>
+  </div>
+
+  <div id="costWrap" hidden></div>
+  <p class="hint" id="costNote"></p>
+
   <h2 data-i18n="optGames">By game</h2>
   <p class="hint" id="gameNote"></p>
   <div id="gameWrap" hidden></div>

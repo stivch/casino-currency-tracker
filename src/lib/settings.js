@@ -146,6 +146,23 @@ export const DEFAULTS = {
   // header balance; noisy everywhere else.
   assumeUnlabeled: false,
 
+  // House edge of the games you play, in percent, for the cost report.
+  //
+  // One figure standing in for every game until there is a per-game table.
+  // 1% is what Stake's own originals are documented at — dice, limbo, mines
+  // and the rest are 99% RTP — so it is right for anyone playing those and
+  // too low for anyone playing slots, which is the direction that understates
+  // rather than overstates what the extension claims to know.
+  houseEdgePercent: 1,
+
+  // Fraction of the house edge handed back as rakeback, in percent.
+  //
+  // 3.5 is the figure in Stake's own help centre, and their worked example
+  // agrees with it. Third-party calculators say 5, which is either stale or
+  // wrong — so this is a setting rather than a constant, and the extension
+  // prefers what it has actually watched arrive over either number.
+  rakebackPercent: 3.5,
+
   // Spread of your real off-ramp, in percent. 0 = use the quoted mid-price.
   feePercent: 0,
 
@@ -276,6 +293,14 @@ export function sanitize(patch) {
   if ('fiscalYearStart' in out) {
     const n = Number(out.fiscalYearStart);
     out.fiscalYearStart = Number.isFinite(n) ? Math.min(12, Math.max(1, Math.round(n))) : DEFAULTS.fiscalYearStart;
+  }
+  if ('houseEdgePercent' in out) {
+    const n = parseAmount(out.houseEdgePercent);
+    out.houseEdgePercent = Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : DEFAULTS.houseEdgePercent;
+  }
+  if ('rakebackPercent' in out) {
+    const n = parseAmount(out.rakebackPercent);
+    out.rakebackPercent = Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : DEFAULTS.rakebackPercent;
   }
   if ('feePercent' in out) {
     const n = Number(out.feePercent);

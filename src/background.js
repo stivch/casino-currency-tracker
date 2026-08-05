@@ -740,11 +740,67 @@ async function readStakeMeta() {
   return stakeMeta || null;
 }
 
+// --------------------------------------------------------- rakeback accrual
+//
+// Stake publishes a rakeback *balance*, which is what is claimable now — it
+// climbs as you wager and drops to nothing when you claim. What the cost
+// report needs is the opposite: the total that has ever accrued.
+//
+// So the balance is watched and its rises are added up. A fall is a claim and
+// is ignored rather than subtracted: the money was still earned.
+//
+// The first reading is a baseline and counts for nothing. Whatever was sitting
+// there when the extension first looked accrued before it was watching, and
+// counting it would credit this session with somebody's whole month.
+
+async function readRakebackEarned() {
+  const { rakebackEarned } = await chrome.storage.local.get('rakebackEarned');
+  return rakebackEarned && typeof rakebackEarned === 'object' ? rakebackEarned : { seen: {}, total: {} };
+}
+
+/** Fold a new set of balances into the running total. */
+function accrue(store, balances) {
+  const seen = { ...(store.seen || {}) };
+  const total = { ...(store.total || {}) };
+  let changed = false;
+
+  for (const row of Array.isArray(balances) ? balances : []) {
+    const coin = String(row?.currency || '').toUpperCase();
+    const amount = Number(row?.amount);
+    if (!coin || !Number.isFinite(amount) || amount < 0) continue;
+
+    const before = seen[coin];
+    seen[coin] = amount;
+
+    if (!Number.isFinite(before)) {
+      // First sight of this coin: baseline only.
+      changed = true;
+      continue;
+    }
+    if (amount > before) {
+      total[coin] = (total[coin] || 0) + (amount - before);
+      changed = true;
+    } else if (amount < before) {
+      changed = true; // a claim; the total keeps what it had
+    }
+  }
+
+  return { store: { seen, total }, changed };
+}
+
 async function recordStakeMeta(meta, { forced = false } = {}) {
   if (!meta || typeof meta !== 'object') return false;
 
   const current = await readStakeMeta();
   const next = { ...(current || {}), ...meta, at: Date.now() };
+
+  // Done before the unchanged check below, because an unchanged balance is
+  // still a reading — it is only a *rise* that adds anything, and a run of
+  // identical readings is exactly what a quiet hour looks like.
+  if (Array.isArray(meta.rakeback)) {
+    const { store, changed } = accrue(await readRakebackEarned(), meta.rakeback);
+    if (changed) await chrome.storage.local.set({ rakebackEarned: store });
+  }
 
   // The same figures arrive on every page navigation; only a changed reading
   // is worth a storage write and a re-render everywhere.
@@ -1403,9 +1459,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => { // es
         sendResponse(await getState());
         break;
 
-      case 'getHistory':
-        sendResponse({ error: null, history: await readHistory(), totals: summarise(await readHistory()) });
+      case 'getHistory': {
+        const history = await readHistory();
+        sendResponse({
+          error: null,
+          history,
+          totals: summarise(history),
+          // What has actually been seen to accrue, per coin, so the cost
+          // report can prefer it over the documented percentage.
+          rakebackEarned: (await readRakebackEarned()).total,
+        });
         break;
+      }
 
       case 'contentError':
         await recordDiagnostic({

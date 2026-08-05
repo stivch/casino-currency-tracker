@@ -33,7 +33,7 @@ entered by hand in the popup. The figure must be labelled as "what you told it a
 presented as a bank statement. Where a session's cross-check is unreconciled, say so in the
 total rather than quietly summing over it.
 
-### 1.2 Realized RTP, against expectation ✅ DONE (partly)
+### 1.2 Realized RTP, against expectation ✅ DONE
 
 **The gap.** Nothing in the codebase computes `returned / wagered`. There is no concept of
 house edge anywhere.
@@ -146,7 +146,7 @@ requirement, a start point, and a progress bar.
 Narrow, unglamorous, and the sort of thing somebody would install an extension specifically to
 get.
 
-### 3.2 VIP and rakeback forecasting
+### 3.2 VIP and rakeback forecasting ✅ PARTLY DONE
 
 `flagProgress.progress` and the rakeback balances are already read. What is missing is the
 projection: at the current wagering rate, how far the next tier is, and what a unit wagered is

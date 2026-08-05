@@ -5,6 +5,16 @@ The version in `manifest.json` is the single source of truth; a release is a
 
 ## Unreleased
 
+- **What it costs.** A per-coin report of what the games took, what they were
+  expected to take, and what came back. Rakeback is a percentage of the *house
+  edge* — 3.5% per Stake's own help centre, not a flat share of turnover — so
+  it returns the same fraction of expected loss whatever you play and cannot
+  make one game better than another. The panel says so, because the affiliate
+  ecosystem widely claims the opposite: a 4% slot pays more rakeback than a 1%
+  original and is still four times more expensive. Rather than trusting any
+  published rate, the extension watches the rakeback balance and sums its
+  rises, so it can report the rate actually being paid.
+
 - **Loss-chasing notice.** One desktop notice per session when the stakes reach
   around three times what the session opened with *while it is down*. Raising
   stakes to win back losses is close to invisible from the inside, because each

@@ -12,7 +12,7 @@ import {
 import { fetchRate, pingKey, ratesFromDuel, ratesFromStake } from '../src/lib/rates.js';
 import { DEFAULTS, TARGET_CURRENCIES, sanitize } from '../src/lib/settings.js';
 import { downsample, plotSeries } from '../src/lib/chart.js';
-import { applyBalance, applyFunds, archiveEntry, chaseStatus, emptySession, fiscalYearOf, gamesOf, ingest, isStale, limitStatus, pushCurve, realisedRtp, reconcile, restate, rollSession, sessionProfit, summarise } from '../src/lib/session.js';
+import { applyBalance, applyFunds, archiveEntry, chaseStatus, costReport, emptySession, fiscalYearOf, gamesOf, ingest, isStale, limitStatus, pushCurve, realisedRtp, reconcile, restate, rollSession, sessionProfit, summarise } from '../src/lib/session.js';
 
 let failures = 0;
 
@@ -744,6 +744,102 @@ console.log('\n-- badge');
   check('tens of thousands drop the decimal', compactMoney(42_000), '42k');
   check('losses carry the sign', compactMoney(-320), '-320');
   check('nothing to show is empty', compactMoney(null), '');
+}
+
+console.log('\n-- what it costs');
+{
+  // Stake's own worked example, from their help centre: 1 BTC wagered on a
+  // game with a 2% house edge returns 0.0007 BTC of rakeback. That is the
+  // arithmetic this whole panel rests on, so it is checked against the source.
+  const stake = costReport({ wagered: 1, returned: 0.98, edgePercent: 2, rakebackPercent: 3.5 });
+  check('Stake’s own worked example', Number(stake.rakebackTheoretical.toFixed(7)), 0.0007);
+  check('expected loss is turnover times the edge', stake.expected, 0.02);
+
+  // The consequence that matters, and the one the affiliate sites get
+  // backwards: rakeback is a fixed share of the edge, so it scales every
+  // game's cost by the same factor and cannot reorder them.
+  const cheap = costReport({ wagered: 1000, returned: 990, edgePercent: 1, rakebackPercent: 3.5 });
+  const dear = costReport({ wagered: 1000, returned: 960, edgePercent: 4, rakebackPercent: 3.5 });
+  check('a 1% game costs 0.965% after rakeback', Number(cheap.effectiveEdge.toFixed(4)), 0.965);
+  check('a 4% game costs 3.86% after rakeback', Number(dear.effectiveEdge.toFixed(4)), 3.86);
+  check('the higher-edge game pays more rakeback', dear.rakebackTheoretical > cheap.rakebackTheoretical, true);
+  check('and is still four times worse', Number((dear.effectiveEdge / cheap.effectiveEdge).toFixed(4)), 4);
+
+  // Variance is reported as the gap between what was expected and what
+  // happened, in both directions, and never as a verdict on the games.
+  const unlucky = costReport({ wagered: 1000, returned: 900, edgePercent: 1 });
+  check('running badly is reported as such', unlucky.luck, 90);
+  const lucky = costReport({ wagered: 1000, returned: 1050, edgePercent: 1 });
+  check('running well is the same figure the other way', lucky.luck, -60);
+  check('and an actual profit is a negative loss', lucky.actual, -50);
+
+  // Measured beats documented, on the same principle as reading the casino's
+  // own price table rather than a provider's view of it.
+  const watched = costReport({ wagered: 1000, returned: 990, edgePercent: 1, rakebackPercent: 3.5, earned: 0.5 });
+  check('an observed accrual is what gets reported', watched.rakeback, 0.5);
+  check('and the rate it implies is derived from it', watched.measuredRate, 5);
+  check('the documented figure is kept beside it', Number(watched.rakebackTheoretical.toFixed(4)), 0.35);
+  check('with no observation there is no measured rate', cheap.measuredRate, null);
+  check('and the documented figure is used', cheap.rakeback, cheap.rakebackTheoretical);
+
+  // Guards.
+  check('nothing wagered is nothing to report', costReport({ wagered: 0 }), null);
+  check('no arguments at all', costReport(), null);
+  check('a zero edge costs nothing', costReport({ wagered: 100, returned: 100, edgePercent: 0 }).effectiveEdge, 0);
+  check('a negative edge is clamped, not honoured',
+    costReport({ wagered: 100, returned: 100, edgePercent: -5 }).expected, 0);
+}
+
+console.log('\n-- rakeback accrual');
+{
+  // Stake publishes what is claimable now, which climbs as you wager and
+  // drops to nothing when you claim. The cost report needs the opposite — the
+  // total that ever accrued — so rises are summed and falls are ignored.
+  // Reimplemented here because the real one lives in the service worker with
+  // chrome.storage around it; the arithmetic is what is worth pinning.
+  const accrue = (store, balances) => {
+    const seen = { ...(store.seen || {}) };
+    const total = { ...(store.total || {}) };
+    for (const row of balances) {
+      const coin = String(row.currency || '').toUpperCase();
+      const amount = Number(row.amount);
+      if (!coin || !Number.isFinite(amount) || amount < 0) continue;
+      const before = seen[coin];
+      seen[coin] = amount;
+      if (!Number.isFinite(before)) continue;
+      if (amount > before) total[coin] = (total[coin] || 0) + (amount - before);
+    }
+    return { seen, total };
+  };
+
+  let store = { seen: {}, total: {} };
+
+  // Whatever was sitting there when the extension first looked accrued before
+  // it was watching. Counting it would credit this month with last month's.
+  store = accrue(store, [{ currency: 'usdt', amount: 5 }]);
+  check('the first reading is a baseline, not earnings', store.total.USDT, undefined);
+
+  store = accrue(store, [{ currency: 'usdt', amount: 5.25 }]);
+  check('a rise is earnings', store.total.USDT, 0.25);
+
+  store = accrue(store, [{ currency: 'usdt', amount: 5.25 }]);
+  check('an unchanged balance earns nothing', store.total.USDT, 0.25);
+
+  // The one that would otherwise wipe the total out.
+  store = accrue(store, [{ currency: 'usdt', amount: 0 }]);
+  check('a claim does not subtract what was earned', store.total.USDT, 0.25);
+
+  store = accrue(store, [{ currency: 'usdt', amount: 0.1 }]);
+  check('and accrual carries on from the new balance', Number(store.total.USDT.toFixed(4)), 0.35);
+
+  // Coins are tracked apart: an edge applied to USDT turnover and one applied
+  // to BTC turnover are answers to different questions.
+  store = accrue(store, [{ currency: 'btc', amount: 1 }]);
+  store = accrue(store, [{ currency: 'btc', amount: 1.5 }]);
+  check('each coin accrues on its own', [store.total.USDT, store.total.BTC].map((n) => Number(n.toFixed(4))), [0.35, 0.5]);
+
+  const junk = accrue({ seen: {}, total: {} }, [{ currency: '', amount: 1 }, { currency: 'usdt', amount: -3 }, {}]);
+  check('junk rows are ignored', junk.total, {});
 }
 
 console.log('\n-- loss chasing');

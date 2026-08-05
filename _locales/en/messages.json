@@ -791,10 +791,10 @@
     "message": "Casino account"
   },
   "optRakeback": {
-    "message": "Read rakeback and VIP progress"
+    "message": "Rakeback % of the edge"
   },
   "optRakebackSub": {
-    "message": "Reads the account data the casino's own app already fetches, and shows the rakeback balance converted — VIP progress on Stake, your level on Duel. Watching only: it adds no requests of its own until you ask it to, with the refresh button or the poll below."
+    "message": "Stake's help centre says 3.5% of the house edge; some third-party calculators say 5%. Only used until the extension has watched enough rakeback actually arrive, at which point it reports the rate you are really being paid instead."
   },
   "optRakebackPoll": {
     "message": "Refresh it every minute"
@@ -1253,6 +1253,96 @@
       "all": {
         "content": "$2",
         "example": "12"
+      }
+    }
+  },
+  "optCost": {
+    "message": "What it costs"
+  },
+  "optCostIntro": {
+    "message": "Every game takes a fixed cut of what you stake, and rakeback hands a fraction of that cut back. Neither figure is shown anywhere on the casino — Stake displays a rakeback balance, not what it is a fraction of. Rakeback is a discount on losing, not a way of winning: because it is a percentage of the house edge, it returns the same share of your expected loss whatever you play, so it cannot make one game better than another. A higher-edge game pays more rakeback because it is taking more."
+  },
+  "optEdge": {
+    "message": "House edge %"
+  },
+  "optEdgeSub": {
+    "message": "The cut the games you play take. Stake's own originals — dice, limbo, mines and the rest — are 99% RTP, so 1%. Slots are usually higher and vary per title; a slot's RTP is on its own info panel. One figure stands in for every game for now."
+  },
+  "costExpected": {
+    "message": "Expected loss"
+  },
+  "costExpectedWhy": {
+    "message": "Turnover times the house edge — what the games take on average."
+  },
+  "costActual": {
+    "message": "Actual"
+  },
+  "costLuck": {
+    "message": "Variance"
+  },
+  "costLuckWhy": {
+    "message": "The gap between the two. Over any normal number of bets this is variance, not a verdict on the games."
+  },
+  "costRakeback": {
+    "message": "Rakeback"
+  },
+  "costEffective": {
+    "message": "Effective edge"
+  },
+  "costEffectiveWhy": {
+    "message": "The house edge after rakeback — what a unit staked really costs you."
+  },
+  "costNone": {
+    "message": "Nothing wagered yet, so there is nothing to cost."
+  },
+  "costMeasuredNote": {
+    "message": "Rakeback shown is what this extension has watched arrive since it was installed, not your lifetime total."
+  },
+  "costAssumedNote": {
+    "message": "Rakeback here is calculated, not observed. Turn on “Read rakeback and VIP progress” and it will report what actually arrives instead."
+  },
+  "cardCost": {
+    "message": "$COIN$ — what it costs",
+    "placeholders": {
+      "coin": {
+        "content": "$1",
+        "example": "USDT"
+      }
+    }
+  },
+  "costWorse": {
+    "message": "$N$ worse than the edge accounts for",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "12.5"
+      }
+    }
+  },
+  "costBetter": {
+    "message": "$N$ better than the edge accounts for",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "12.5"
+      }
+    }
+  },
+  "costRateAssumed": {
+    "message": "assumed $N$% of the edge",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "3.5"
+      }
+    }
+  },
+  "costRateMeasured": {
+    "message": "$N$% of the edge, as measured",
+    "placeholders": {
+      "n": {
+        "content": "$1",
+        "example": "3.48"
       }
     }
   }

@@ -1,7 +1,7 @@
 import { plotSeries } from './lib/chart.js';
 import { applyI18n, t, useMessages } from './lib/i18n.js';
 import { currencySymbol, formatMoney } from './lib/format.js';
-import { fiscalYearOf, realisedRtp, restate } from './lib/session.js';
+import { costReport, fiscalYearOf, realisedRtp, restate } from './lib/session.js';
 import { limitSwitchText } from './lib/notices.js';
 import { CASINOS, DEFAULTS, OPTIONAL_DOMAINS, TARGET_CURRENCIES, casinoForDomain, mirrorOrigins } from './lib/settings.js';
 
@@ -10,11 +10,14 @@ const $ = (id) => document.getElementById(id);
 const CHECKBOXES = ['enabled', 'trackSession', 'showHud', 'hoverTooltip', 'selectionTooltip',
   'assumeUnlabeled', 'inlineAnnotate', 'showBadge', 'notifyLimits', 'notifyChasing', 'stakeRates', 'trackRakeback', 'rakebackPoll'];
 const NUMBERS = ['refreshMinutes', 'decimals', 'feePercent', 'sessionIdleMinutes'];
+// Percentages typed as text so "1.5" and a pasted "1.5%" both survive.
+const RATES = ['houseEdgePercent', 'rakebackPercent'];
 const SELECTS = ['targetCurrency', 'fiscalYearStart'];
 // Nullable: blank means "no limit", so these cannot go through the numeric path.
 const LIMITS = ['limitWager', 'limitLoss', 'limitWin', 'limitMinutes', 'alertAbove', 'alertBelow'];
 
 let history = [];
+let rakebackEarned = {};
 
 let state = null;
 
@@ -82,6 +85,7 @@ function render() {
 
   for (const id of CHECKBOXES) $(id).checked = Boolean(settings[id]);
   for (const id of NUMBERS) $(id).value = settings[id];
+  for (const id of RATES) $(id).value = settings[id];
   for (const id of SELECTS) $(id).value = settings[id];
 
   // Blank means "use the live feed", so null must not render as "null".
@@ -330,6 +334,69 @@ function renderGames(totals) {
   }).join('');
 }
 
+/**
+ * What the games took, what was expected, and what came back.
+ *
+ * Per coin, because an edge applied to USDT turnover and one applied to BTC
+ * turnover are answers to different questions. The rate actually observed is
+ * preferred over the documented one wherever there is enough of it to divide.
+ */
+function renderCost(totals) {
+  const settings = state?.settings || {};
+  const buckets = Object.values(totals || {});
+  const wrap = $('costWrap');
+
+  const cards = buckets.map((bucket) => {
+    const report = costReport({
+      wagered: bucket.wagered,
+      returned: bucket.returned,
+      edgePercent: settings.houseEdgePercent,
+      rakebackPercent: settings.rakebackPercent,
+      earned: rakebackEarned[bucket.currency],
+    });
+    if (!report) return '';
+
+    // Positive luck means it went worse than the edge alone accounts for.
+    // Named as luck rather than as a verdict on the games, because over any
+    // normal number of bets that is exactly what it is.
+    const ran = report.luck > 0
+      ? t('costWorse', `${num(report.luck)} worse than the edge accounts for`, [num(report.luck)])
+      : t('costBetter', `${num(-report.luck)} better than the edge accounts for`, [num(-report.luck)]);
+
+    const rateLine = report.measuredRate === null
+      ? t('costRateAssumed', `assumed ${settings.rakebackPercent}% of the edge`, [String(settings.rakebackPercent)])
+      : t('costRateMeasured', `${report.measuredRate.toFixed(2)}% of the edge, as measured`,
+        [report.measuredRate.toFixed(2)]);
+
+    return `<div class="card"><h3>${t('cardCost', `${bucket.currency} — what it costs`, [bucket.currency])}</h3><dl>
+      <dt>${t('colWagered', 'Wagered')}</dt><dd>${num(report.wagered)}</dd>
+      <dt title="${t('costExpectedWhy', 'Turnover times the house edge — what the games take on average.').replace(/"/g, '&quot;')}">${t('costExpected', 'Expected loss')}</dt>
+      <dd>${num(report.expected)}</dd>
+      <dt>${t('costActual', 'Actual')}</dt>
+      <dd class="${signClass(-report.actual)}">${num(report.actual)}</dd>
+      <dt title="${t('costLuckWhy', 'The gap between the two. Over any normal number of bets this is variance, not a verdict on the games.').replace(/"/g, '&quot;')}">${t('costLuck', 'Variance')}</dt>
+      <dd class="${signClass(-report.luck)}">${ran}</dd>
+      <dt>${t('costRakeback', 'Rakeback')}</dt>
+      <dd>${num(report.rakeback)}<br><span class="sub">${rateLine}</span></dd>
+      <dt title="${t('costEffectiveWhy', 'The house edge after rakeback — what a unit staked really costs you.').replace(/"/g, '&quot;')}">${t('costEffective', 'Effective edge')}</dt>
+      <dd>${report.effectiveEdge.toFixed(3)}%</dd>
+    </dl></div>`;
+  }).filter(Boolean);
+
+  wrap.hidden = cards.length === 0;
+  wrap.className = cards.length ? 'totals' : '';
+  wrap.innerHTML = cards.join('');
+
+  const measured = buckets.some((b) => Number.isFinite(rakebackEarned[b.currency]));
+  $('costNote').textContent = cards.length === 0
+    ? t('costNone', 'Nothing wagered yet, so there is nothing to cost.')
+    : measured
+      ? t('costMeasuredNote',
+        'Rakeback shown is what this extension has watched arrive since it was installed, not your lifetime total.')
+      : t('costAssumedNote',
+        'Rakeback here is calculated, not observed. Turn on “Read rakeback and VIP progress” and it will report what actually arrives instead.');
+}
+
 function renderHistory(totals) {
   $('historyCount').textContent = history.length
     ? t('historyCount', `${history.length} session${history.length === 1 ? '' : 's'} recorded.`, [String(history.length)])
@@ -368,6 +435,7 @@ function renderHistory(totals) {
     .join('');
 
   renderGames(totals);
+  renderCost(totals);
 
   const mark = currencySymbol(target());
   const head = `<thead><tr><th>${t('colStarted', 'Started')}</th><th>${t('colLength', 'Length')}</th>
@@ -681,6 +749,7 @@ function renderBetLog() {
 async function loadHistory() {
   const response = await send({ type: 'getHistory' });
   history = response.history || [];
+  rakebackEarned = response.rakebackEarned || {};
   renderHistory(response.totals);
 }
 
@@ -820,6 +889,13 @@ for (const id of CHECKBOXES) {
 
 for (const id of NUMBERS) {
   // change, not input: committing on every keystroke would clamp mid-typing.
+  $(id).addEventListener('change', (event) => patch({ [id]: event.target.value }));
+}
+
+// Changing either rate redraws the cost report, which patch() does by way of
+// render() — the figures behind it have not moved, only what they are read
+// against.
+for (const id of RATES) {
   $(id).addEventListener('change', (event) => patch({ [id]: event.target.value }));
 }
 
