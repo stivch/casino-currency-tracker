@@ -22,6 +22,19 @@
  */
 export const RTL_LANGUAGES = new Set();
 
+/**
+ * The languages this build actually ships a bundle for — one folder per entry
+ * under `_locales`, and tools/selftest.mjs asserts the two agree.
+ *
+ * It exists because `activeLanguage` is not only a lookup key: it is written to
+ * `<html lang>`, and everything `Intl` names for this extension — currency
+ * names, month names — is derived from that. Claiming a language no bundle
+ * exists for produced a page whose own text was English and whose currency list
+ * was not: a Hebrew Chrome showed "Israeli New Shekel" as "שקל חדש", right to
+ * left, in a settings page written entirely in English.
+ */
+export const TRANSLATIONS = new Set(['en']);
+
 /** @type {{lang: string, messages: Record<string, {message: string, placeholders?: object}>}|null} */
 let bundle = null;
 
@@ -30,7 +43,23 @@ export function useMessages(next) {
   bundle = next && next.messages ? next : null;
 }
 
-export const activeLanguage = () => bundle?.lang || chrome.i18n?.getUILanguage?.() || 'en';
+/**
+ * The language the page is actually being read in.
+ *
+ * Clamped to what is shipped, and that is the whole point. Chrome's UI language
+ * is a statement about the browser, not about this extension: with only an
+ * English bundle, `chrome.i18n` serves English to a Hebrew browser and the page
+ * is English — so naming it "he" was describing something that was not true,
+ * and `Intl` believed it.
+ *
+ * Region is dropped ("en-GB" is the "en" bundle) because bundles are per
+ * language, not per region.
+ */
+export function activeLanguage() {
+  const claimed = bundle?.lang || chrome.i18n?.getUILanguage?.() || 'en';
+  const base = String(claimed).split('-')[0].toLowerCase();
+  return TRANSLATIONS.has(base) ? base : 'en';
+}
 
 /**
  * Chrome's own substitution, done by hand: a message written "$COIN$ balance"

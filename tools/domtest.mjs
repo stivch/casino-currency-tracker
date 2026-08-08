@@ -16,7 +16,7 @@ import { createRequire } from 'node:module';
 import { emptySession, gamesOf, ingest, sessionProfit } from '../src/lib/session.js';
 
 const require = createRequire(import.meta.url);
-const { findMyBetsTable, scrapeBets, parseCell, siteFor, betsFromDuel, DUEL_HOSTS, betsFromStakeGame, gameName } = require('../src/lib/scrape.js');
+const { findMyBetsTable, scrapeBets, parseCell, siteFor, betsFromDuel, DUEL_HOSTS, betsFromStakeGame, gameName, SITES, pinCandidates } = require('../src/lib/scrape.js');
 
 let failures = 0;
 
@@ -600,6 +600,50 @@ console.log('\n-- Duel: the whole page adds up');
   check('newest first', rows.map((r) => r.id), ['mines_rounds:3', 'mines_rounds:2', 'mines_rounds:1']);
   check('wagered is the sum of the stakes', wagered, 7);
   check('and the P/L is down by the lost stake less the two wins', profit, -3);
+}
+
+console.log('\n-- what the readout follows');
+{
+  // The order is the feature: it is what decides whether anybody ever has to
+  // pin anything, and whether a pin made on one casino follows you to another.
+  const order = (site, settings) => pinCandidates(site, settings).map((c) => c.source);
+  const first = (site, settings) => pinCandidates(site, settings)[0];
+
+  // Nothing pinned: the site's own balance chip is the only candidate, and it
+  // is what makes pinning optional rather than required.
+  check('nothing pinned still has something to follow', order(SITES.stake, {}), ['auto']);
+  check('and it is the chip the currency reader already uses',
+    first(SITES.stake, {}).selector, SITES.stake.currencyChip);
+  check('Duel has one of its own', first(SITES.duel, {}).selector, SITES.duel.currencyChip);
+
+  // A pin is tried first, with the chip still behind it — that fallback is what
+  // stops a path that stopped matching from meaning "pin it again".
+  const pinned = { pins: { stake: { selector: '#mine', label: 'USDT' } } };
+  check('a pin is tried before the chip', order(SITES.stake, pinned), ['pin', 'auto']);
+  check('and the chip is still there to fall back to',
+    pinCandidates(SITES.stake, pinned)[1].selector, SITES.stake.currencyChip);
+  check('the pin carries its label', first(SITES.stake, pinned).label, 'USDT');
+
+  // Per casino. One slot for both was why a pin made on Stake left the readout
+  // on Duel saying the element was not on the page.
+  check("Stake's pin is not offered on Duel", order(SITES.duel, pinned), ['auto']);
+  check('each casino has its own',
+    order(SITES.duel, { pins: { duel: { selector: '#d' }, stake: { selector: '#s' } } }), ['pin', 'auto']);
+
+  // The single pin from before this was per site is still read, so upgrading
+  // does not quietly discard what somebody chose — but a new pin outranks it.
+  check('the old global pin is still tried',
+    order(SITES.stake, { trackedSelector: '#old' }), ['legacy', 'auto']);
+  check('and a per-site pin comes first',
+    order(SITES.stake, { trackedSelector: '#old', pins: { stake: { selector: '#new' } } }),
+    ['pin', 'legacy', 'auto']);
+
+  // Nothing here may produce an empty selector: content.js would hand it to
+  // querySelector, which throws on one.
+  check('no candidate is ever blank',
+    pinCandidates(SITES.stake, { pins: { stake: { selector: '' } }, trackedSelector: '   ' })
+      .filter((c) => !c.selector.trim()), []);
+  check('a missing site is not a crash', order(undefined, {}), []);
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall passed');

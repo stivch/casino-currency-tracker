@@ -85,6 +85,39 @@
   }
 
   /**
+   * Where to look for the amount the readout follows, best first.
+   *
+   * Pure, and here rather than in content.js, because the *order* is the whole
+   * feature and the order is the part worth testing — content.js keeps only the
+   * half that needs a document, which is trying each one until one matches.
+   *
+   *  1. **This site's pin.** What the picker last stored for this casino.
+   *  2. **The old global pin.** Written by builds before pins were per site,
+   *     read so that upgrading does not silently drop what somebody chose.
+   *  3. **The site's own balance chip.** The `data-testid` above — stable
+   *     across deploys, unlike the generated classes underneath it.
+   *
+   * The caller takes the first that *resolves*, not the first that is set.
+   * That distinction is what stops a pin needing to be made again: both sites
+   * re-render whole subtrees on navigation, so a generated path can stop
+   * matching, and falling through to the chip keeps the readout working.
+   */
+  function pinCandidates(site, settings) {
+    const mine = settings?.pins?.[site?.id];
+    // Trimmed, and filtered on the trimmed value: the legacy pin never went
+    // through the settings sanitiser, so a stored "   " is possible — and it is
+    // truthy, which is enough to become a candidate that querySelector then
+    // throws on. Whitespace is not a selector.
+    const text = (value) => String(value ?? '').trim();
+
+    return [
+      { source: 'pin', selector: text(mine?.selector), label: text(mine?.label) },
+      { source: 'legacy', selector: text(settings?.trackedSelector), label: text(settings?.trackedLabel) },
+      { source: 'auto', selector: text(site?.currencyChip), label: '' },
+    ].filter((candidate) => candidate.selector);
+  }
+
+  /**
    * The exact columns of the "My Bets" tab, in order. Matching on the full set
    * rather than a substring is what keeps "All Bets" out: that table carries a
    * user column, and counting strangers' bets as yours would be far worse than
@@ -441,7 +474,7 @@
 
   const API = {
     MY_BETS_HEADERS, parseCell, findMyBetsTable, scrapeBets,
-    SITES, siteFor, DUEL_HOSTS, STAKE_HOSTS,
+    SITES, siteFor, pinCandidates, DUEL_HOSTS, STAKE_HOSTS,
     DUEL_CURRENCIES, DUEL_BET_KEY_RE, duelSettled, betsFromDuel,
     gameName, betsFromStakeGame,
   };

@@ -55,7 +55,79 @@ body {
 /* 344 rather than 320: four limit fields and a three-up stat row both stop
    fighting for the last few pixels, and Chrome allows far more than either. */
 body.popup { width: 344px; padding: 10px; }
-body.options { max-width: 680px; margin: 0 auto; padding: 28px 22px 56px; }
+
+/* The options page is a sidebar and one pane, not a single long scroll.
+ *
+ * It had grown to fourteen headings on one column, which meant the rate
+ * settings and the tax-year grouping were the same distance from the top as
+ * each other and neither could be found. Splitting it costs one rule about
+ * which pane is showing — and that rule is the URL fragment, so back, forward
+ * and a bookmarked #reports all work without anything here remembering them.
+ */
+body.options { padding: 0; }
+
+.shell {
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  gap: 34px;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 26px 24px 60px;
+  align-items: start;
+}
+
+.sidenav { position: sticky; top: 26px; display: flex; flex-direction: column; gap: 18px; }
+
+.brand { display: flex; flex-direction: column; gap: 2px; padding: 0 10px; }
+.brand-name { font-size: 14px; font-weight: 650; letter-spacing: -.2px; color: var(--text); }
+.brand-version { font-size: 10.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
+
+#nav { display: flex; flex-direction: column; gap: 2px; }
+
+/* The marker is a border on all four sides, three of which have no width.
+   Which side shows is then a width, and the colour is set once — so the narrow
+   layout below can move the marker without touching the colour, and no
+   shorthand anywhere can quietly reset it back to currentColor. */
+.nav-item {
+  display: block; padding: 8px 10px; border-radius: var(--radius);
+  color: var(--muted); font-size: 12.5px; font-weight: 500; text-decoration: none;
+  border: 0 solid transparent; border-left-width: 2px;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.nav-item:hover { background: var(--panel); color: var(--text); }
+/* The current pane is the one interactive-blue thing in the list, which is
+   what stops it reading as another link you have not pressed yet. */
+.nav-item[aria-current="page"] {
+  background: var(--panel); color: var(--text);
+  border-color: var(--brand);
+}
+.nav-item:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(88, 182, 240, .45); }
+
+.content { min-width: 0; }
+
+/* Panes are display:none rather than moved off-screen, so a hidden one costs no
+   layout and its tables do not force the page wider than the visible one. */
+.page { display: none; }
+.page.on { display: block; }
+
+.page-head { margin-bottom: 18px; }
+.page-head .hint { margin-top: 8px; }
+
+/* The first heading inside a pane sits under the page title, so it does not
+   need the top margin that separates two sections of the same pane. */
+.page > h2:first-of-type { margin-top: 26px; }
+
+@media (max-width: 860px) {
+  /* Below this the sidebar stops being a sidebar: it becomes a strip that
+     scrolls sideways above the pane, which is the one layout that does not
+     make either half unusably narrow. */
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 18px 16px 48px; }
+  .sidenav { position: static; gap: 12px; }
+  #nav { flex-direction: row; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
+  /* Widths only — the marker's colour is set once, above. */
+  .nav-item { flex: none; white-space: nowrap; border-left-width: 0; border-bottom-width: 2px; }
+  .sidenav .credit { display: none; }
+}
 
 h1 { font-size: 19px; font-weight: 650; letter-spacing: -.2px; margin: 0 0 6px; }
 
@@ -180,6 +252,32 @@ select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px 
   letter-spacing: .3px;
 }
 
+/* A row whose control needs the full width rather than the right-hand end of
+   it — the overlay's field list, which is a small table. */
+.row.stack { display: block; }
+.row.stack .grow { display: block; }
+
+/* One line per field: the tick, what it is, and what to call it on screen. */
+.fields { margin-top: 10px; display: grid; gap: 6px; }
+.fields .field { display: flex; align-items: center; gap: 10px; }
+.fields label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; width: 130px; flex: none; }
+.fields label input { margin: 0; accent-color: var(--brand); }
+.fields input[type="text"] { flex: 1; width: auto; min-width: 0; font-size: 12.5px; }
+
+/* A stored selector is a generated path fourteen levels deep. Monospaced and
+   allowed to wrap, because the alternative is one very long line that either
+   stretches the row or is cut off at the point it stops being identifiable. */
+.sub.selector {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 10.5px; overflow-wrap: anywhere;
+}
+
+.colours { display: flex; gap: 6px; }
+.colours input[type="color"] {
+  width: 40px; height: 28px; padding: 2px; cursor: pointer;
+  background: var(--raise); border: 1px solid var(--line); border-radius: var(--radius);
+}
+
 button {
   background: var(--raise); color: var(--text);
   border: 1px solid var(--line); border-radius: var(--radius);
@@ -262,6 +360,11 @@ button.wide#reset:hover {
 .spark-zero { stroke: #2b4557; stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
 .spark-fill.up { fill: rgba(0, 231, 1, .14); }
 .spark-fill.down { fill: rgba(255, 91, 85, .14); }
+
+/* The session's records — best multiplier and win rate. Neither is a warning
+   and neither needs a box, so this is one quiet line under the curve. */
+.sess-records { margin: 8px 0 0; font-size: 10.5px; color: var(--dim); line-height: 1.45; }
+.sess-records b { color: #fff; font-weight: 650; font-variant-numeric: tabular-nums; }
 
 .sess-limit {
   margin: 10px 0 0; padding: 8px 10px; border-radius: var(--radius);
@@ -355,6 +458,8 @@ button.wide#reset:hover {
 .totals .card dd { margin: 0; font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
 .totals .card dd.up { color: var(--accent); }
 .totals .card dd.down { color: var(--bad); }
+/* The game a record was set in, beside the figure but not competing with it. */
+.totals .card dd .dim { color: var(--dim); font-size: 10.5px; }
 
 /* Wide content scrolls inside its own box; the page itself never scrolls sideways. */
 .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); }
@@ -411,6 +516,26 @@ button.wide#reset:hover {
 .credit { margin: 12px 4px 2px; color: var(--dim); font-size: 10px; line-height: 1.6; }
 .credit a { color: var(--dim); text-decoration: underline; text-underline-offset: 2px; }
 .credit a:hover { color: var(--muted); }
+/* In the sidebar it is a footnote under the nav, not a paragraph. */
+.sidenav .credit { margin: auto 10px 0; padding-top: 8px; border-top: 1px solid var(--line-soft); max-width: none; }
+
+/* The saved/failed line, pinned rather than left at the foot of the pane —
+   "Saved." at the bottom of a page this long was a confirmation nobody saw.
+   Shown by a class rather than by `:empty`, so that the message being cleared
+   and the pill being hidden are one decision made in one place, and a second
+   save arriving mid-fade cannot leave the two disagreeing. */
+.toast {
+  position: fixed; left: 50%; bottom: 22px;
+  margin: 0; padding: 9px 16px; max-width: 70ch;
+  background: var(--raise); color: var(--text);
+  border: 1px solid var(--line); border-radius: 999px;
+  box-shadow: var(--lift-lg);
+  font-size: 12px; font-weight: 550; text-align: center;
+  opacity: 0; transform: translateX(-50%) translateY(6px); pointer-events: none;
+  transition: opacity .16s, transform .16s;
+  z-index: 20;
+}
+.toast.show { opacity: 1; transform: translateX(-50%); }
 
 /* A pill, so it reads as a state that arrived rather than as text that was
    always there and happened to fade in. */

@@ -35,6 +35,166 @@
   "popBets": {
     "message": "Bets"
   },
+  "popBest": {
+    "message": "Best"
+  },
+  "ovWinRate": {
+    "message": "Won"
+  },
+  "ovWaiting": {
+    "message": "Waiting for a session…"
+  },
+  "ovNothingYet": {
+    "message": "Nothing to show yet…"
+  },
+  "optPinnedIntro": {
+    "message": "The readout follows each site's own balance chip on its own, so there is normally nothing to do here. Both sites tag that chip with an id they keep stable across releases, while the markup underneath it is regenerated whenever the balance changes — which is why following the chip survives what a pin on the digits does not. Pin something yourself only to follow a different number; it is remembered per site, and if it ever stops resolving the readout falls back to the chip rather than asking to be pinned again."
+  },
+  "optPinAuto": {
+    "message": "the balance chip"
+  },
+  "optPinAutoSub": {
+    "message": "Automatic. Pin something on the page to follow that instead."
+  },
+  "optPinLegacy": {
+    "message": "Pinned before this was per site"
+  },
+  "hudBalanceAuto": {
+    "message": "balance"
+  },
+  "navGeneral": {
+    "message": "General"
+  },
+  "navOnPage": {
+    "message": "On the page"
+  },
+  "navOnPageSub": {
+    "message": "What the extension does while you have a casino open — what it converts, what it reads, and what it draws."
+  },
+  "navSession": {
+    "message": "Session & limits"
+  },
+  "navAlerts": {
+    "message": "Alerts"
+  },
+  "navAlertsSub": {
+    "message": "Everything that speaks up without you looking at it. All of it is off-switchable, and none of it blocks anything."
+  },
+  "navOverlay": {
+    "message": "Streamer overlay"
+  },
+  "navReports": {
+    "message": "Reports"
+  },
+  "navReportsSub": {
+    "message": "Everything recorded so far, read back. Nothing here is a tax document — the site's own records are the authoritative ones, and where these figures are a floor rather than a total, they say so."
+  },
+  "navSites": {
+    "message": "Sites"
+  },
+  "navData": {
+    "message": "Backup & data"
+  },
+  "optLimits": {
+    "message": "Limits"
+  },
+  "optLimitsIntro": {
+    "message": "Each one flags in the overlay and, if you want, as a desktop notice. Nothing is blocked and no bet is stopped — these report, and the reading is yours."
+  },
+  "optRateAlerts": {
+    "message": "Rate alerts"
+  },
+  "optDanger": {
+    "message": "Start again"
+  },
+  "optOverlay": {
+    "message": "Streamer overlay"
+  },
+  "optOverlayIntro": {
+    "message": "A separate window showing the live session, large, on a flat colour. Capture it in OBS as a Window Capture and add a Chroma Key filter on the background colour. (OBS's Browser Source runs its own browser and cannot open an extension page, which is why this is a window rather than a URL, and why the background is a colour rather than transparent.) It reads the same session everything else does — no request, no new permission, and it writes nothing."
+  },
+  "optOverlayCare": {
+    "message": "This one is broadcast. Everything ticked below goes on screen in front of whoever is watching, so it is a list you tick rather than one you untick."
+  },
+  "optOverlayFields": {
+    "message": "Show, and what to call it"
+  },
+  "optOverlayFieldsSub": {
+    "message": "Tick what goes on screen. The name beside each one is yours to write — leave it blank for the default. An overlay is read by an audience whose language this has no way of knowing, so the words are yours rather than a translation's. A figure with nothing to report yet — a best multiplier before anything has paid — is left out rather than shown as a dash."
+  },
+  "optOverlayLayout": {
+    "message": "Layout"
+  },
+  "optOverlayLayoutSub": {
+    "message": "A row for a strip along the edge of a scene, a stack for a corner."
+  },
+  "optOverlayBar": {
+    "message": "Row"
+  },
+  "optOverlayBlock": {
+    "message": "Stack"
+  },
+  "optOverlaySize": {
+    "message": "Text size"
+  },
+  "optOverlaySizeSub": {
+    "message": "Pixels, 12 to 160. Everything else scales with it."
+  },
+  "optOverlayColour": {
+    "message": "Colours"
+  },
+  "optOverlayColourSub": {
+    "message": "Text, then the background to key out. Profit stays green and loss stays red whatever you pick — that is what a glance at the overlay is reading."
+  },
+  "optOverlayCoin": {
+    "message": "Show coin amounts too"
+  },
+  "optOverlayCoinSub": {
+    "message": "The figure in coin beneath the converted one."
+  },
+  "optOverlayOpen": {
+    "message": "Overlay window"
+  },
+  "optOverlayOpenBtn": {
+    "message": "Open"
+  },
+  "optOverlayOpenSub": {
+    "message": "Opens now, and updates itself as you play. Close it to stop broadcasting."
+  },
+  "optOverlayNoFields": {
+    "message": "Nothing ticked, so the window will be empty."
+  },
+  "recBest": {
+    "message": "Best $MULT$",
+    "placeholders": {
+      "mult": {
+        "content": "$1",
+        "example": "12.40×"
+      }
+    }
+  },
+  "recBestOn": {
+    "message": "Best $MULT$ on $GAME$",
+    "placeholders": {
+      "mult": {
+        "content": "$1",
+        "example": "12.40×"
+      },
+      "game": {
+        "content": "$2",
+        "example": "Mines"
+      }
+    }
+  },
+  "recWinRate": {
+    "message": "$PCT$ of bets came back",
+    "placeholders": {
+      "pct": {
+        "content": "$1",
+        "example": "42%"
+      }
+    }
+  },
   "popJustStarted": {
     "message": "just started"
   },
@@ -144,10 +304,7 @@
     "message": "Time"
   },
   "checkWaiting": {
-    "message": "Balance cross-check waiting for a wallet reading."
-  },
-  "checkPin": {
-    "message": "Pin your balance on Stake to cross-check these figures against the wallet."
+    "message": "Balance cross-check waiting for a wallet reading — open the casino tab you play in."
   },
   "checkSettling": {
     "message": "Cross-check settling — a bet is still landing on one side."
@@ -790,6 +947,12 @@
   "optStake": {
     "message": "Casino account"
   },
+  "optAccountRead": {
+    "message": "Read rakeback, VIP progress and balances"
+  },
+  "optAccountReadSub": {
+    "message": "Reads the account data the casino's own app already fetches, and shows the rakeback balance converted — VIP progress on Stake, your level on Duel. On Stake it also reads your wallet balances, which is what lets the readout show one when the balance chip is not on the page. Watching only: it adds no requests of its own until you ask it to, with the refresh button or the poll below."
+  },
   "optRakeback": {
     "message": "Rakeback % of the edge"
   },
@@ -1209,6 +1372,24 @@
   },
   "colRtp": {
     "message": "Return"
+  },
+  "colWonPct": {
+    "message": "Bets that paid"
+  },
+  "colBest": {
+    "message": "Best multiplier"
+  },
+  "colBestShort": {
+    "message": "Best"
+  },
+  "winRateWhy": {
+    "message": "How often a bet came back with anything at all. A count, not an estimate — it needs no minimum sample."
+  },
+  "bestWhy": {
+    "message": "The highest payout multiplier recorded, across every session in this coin."
+  },
+  "bestNone": {
+    "message": "No session has recorded one yet. Sessions closed before this was tracked carry no multiplier."
   },
   "colFunded": {
     "message": "In / out"

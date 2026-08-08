@@ -1,0 +1,105 @@
+/* The streamer overlay.
+ *
+ * Shares nothing with ui.css on purpose. That stylesheet dresses a popup and an
+ * options page — panels, borders, hover states, a page background. Every one of
+ * those would be captured along with the figures here, and the whole job of this
+ * page is to be nothing but figures on a keyable colour.
+ *
+ * Sizes are all relative to --size, which the options page sets in px. One knob
+ * scales the whole thing, because "make it bigger" is the only sizing request a
+ * broadcast layout ever gets.
+ */
+
+:root {
+  --size: 40px;
+  --fg: #ffffff;
+  --bg: #00b140;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Segoe UI", Roboto, -apple-system, system-ui, sans-serif;
+  /* Nothing here is selectable or scrollable: a stray drag-select highlight is
+     a blue box live on stream, and a scrollbar is furniture. */
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: calc(var(--size) * 0.35);
+}
+
+.panel {
+  display: flex;
+  gap: calc(var(--size) * 0.9);
+  align-items: baseline;
+}
+
+/* A row, for a strip across the top or bottom of a scene.
+   It wraps rather than overflowing, because a window resized by hand is a
+   window that can be made too narrow — and `align-content: center` is what
+   keeps a wrapped second row inside the frame instead of pushing the first one
+   off the top of it. */
+.panel.bar { flex-direction: row; flex-wrap: wrap; justify-content: center; align-content: center; }
+
+/* A stack, for a corner. The labels line up down the left so the figures form
+   a column rather than sitting at ragged offsets. */
+.panel.block { flex-direction: column; align-items: stretch; gap: calc(var(--size) * 0.3); }
+.panel.block .cell { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--size) * 0.7); }
+
+.cell { line-height: 1.1; }
+
+.k {
+  display: block;
+  font-size: calc(var(--size) * 0.34);
+  font-weight: 600;
+  letter-spacing: calc(var(--size) * 0.03);
+  text-transform: uppercase;
+  opacity: .72;
+}
+.panel.block .k { display: inline-block; }
+
+.v {
+  display: block;
+  font-size: var(--size);
+  font-weight: 700;
+  /* Figures that change every bet must not shuffle the layout as they do. */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.panel.block .v { display: inline-block; }
+
+/* The coin figure under the converted one, for an audience watching a balance
+   denominated in coin. */
+.v small {
+  display: block;
+  font-size: calc(var(--size) * 0.36);
+  font-weight: 500;
+  opacity: .72;
+}
+.panel.block .v small { display: inline; margin-left: calc(var(--size) * 0.25); }
+
+/* Green up and red down are the two colours this page sets for itself rather
+   than taking from the settings: a P/L that does not change colour with its
+   sign is the one thing a glance at a stream is reading it for. They are the
+   same pair the popup and the overlay use. */
+.v.up { color: #00e701; }
+.v.down { color: #ff5b55; }
+
+.idle {
+  margin: 0;
+  font-size: calc(var(--size) * 0.45);
+  font-weight: 600;
+  opacity: .55;
+  text-align: center;
+}

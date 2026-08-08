@@ -1,7 +1,7 @@
-import { coinRate, currencySymbol, displayDecimals, formatMoney, formatNumber, parseAmount } from './lib/format.js';
+import { coinRate, currencySymbol, displayDecimals, escapeHtml, formatMoney, formatMultiplier, formatNumber, parseAmount } from './lib/format.js';
 import { applyI18n, t, useMessages } from './lib/i18n.js';
 import { plotSeries } from './lib/chart.js';
-import { limitStatus } from './lib/session.js';
+import { limitStatus, winRate } from './lib/session.js';
 import { limitSwitchText } from './lib/notices.js';
 
 const $ = (id) => document.getElementById(id);
@@ -191,6 +191,7 @@ function renderSession() {
     `${s.bets}<small>${t('winLoss', `${s.wins}W / ${s.losses}L`, [String(s.wins), String(s.losses)])}</small>`;
 
   renderSpark(s.curve, profit);
+  renderRecords(s);
   renderCheck(s);
   renderFunds(s);
   renderLimits(s, rate);
@@ -204,6 +205,37 @@ function renderSession() {
   }
   warn.hidden = notes.length === 0;
   warn.textContent = notes.join(' ');
+}
+
+/**
+ * The two facts about a session that are not money: the best multiplier it
+ * produced, and how often a bet came back at all.
+ *
+ * Kept off the figure grid deliberately. The three cells above are what the
+ * evening cost; these two are what it did, and putting them in the same row
+ * would invite reading a good multiplier as an offset against a bad P/L.
+ */
+function renderRecords(s) {
+  const box = $('sessRecords');
+  const parts = [];
+
+  if (s.best && Number.isFinite(s.best.multiplier)) {
+    const shown = `<b>${formatMultiplier(s.best.multiplier)}</b>`;
+    // The game name is the casino's markup, read back out of its own table.
+    const game = escapeHtml(s.best.game);
+    parts.push(game
+      ? t('recBestOn', `Best ${shown} on ${game}`, [shown, game])
+      : t('recBest', `Best ${shown}`, [shown]));
+  }
+
+  const rate = winRate(s.wins, s.bets);
+  if (rate !== null) {
+    const pct = `<b>${rate.toFixed(0)}%</b>`;
+    parts.push(t('recWinRate', `${pct} of bets came back`, [pct]));
+  }
+
+  box.hidden = parts.length === 0;
+  box.innerHTML = parts.join(' · ');
 }
 
 /**
@@ -341,9 +373,12 @@ function renderCheck(s) {
   if (!check?.known) {
     box.hidden = false;
     box.className = 'sess-check';
-    box.textContent = state.settings.trackedSelector
-      ? t('checkWaiting', 'Balance cross-check waiting for a wallet reading.')
-      : t('checkPin', 'Pin your balance on Stake to cross-check these figures against the wallet.');
+    // This used to ask the reader to pin their balance, which is no longer
+    // something they have to do: the readout follows the site's own balance
+    // chip on its own, so the only thing missing here is a reading — which
+    // needs the casino tab to be open for the chip to be read off.
+    box.textContent = t('checkWaiting',
+      'Balance cross-check waiting for a wallet reading — open the casino tab you play in.');
     return;
   }
 

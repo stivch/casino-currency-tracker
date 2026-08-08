@@ -580,5 +580,103 @@ console.log('\n-- the adapter follows the config, not the hostname');
   check('an unknown site id does not unseat the hostname', page.kindsOf('bets').length > 0, true);
 }
 
+console.log('\n-- Stake: the wallet, from its own books');
+{
+  // Trimmed from a real UserBalances reply. The shape is what matters: the
+  // amount and the coin sit under `available`, the coin is lower case, and the
+  // reply enumerates every currency Stake supports — roughly a hundred and
+  // eighty of them, essentially all zero. The two usdt figures are verbatim,
+  // including the exponent notation, because a balance that small is exactly
+  // the kind of thing a naive parse turns into zero or NaN.
+  const balance = (currency, amount) => ({
+    available: { amount, currency, __typename: 'Balance' },
+    vault: { amount: 0, currency, __typename: 'Balance' },
+    __typename: 'UserBalance',
+  });
+
+  const BALANCES = {
+    data: {
+      user: {
+        id: '934a8066-38b5-450d-86c1-b5f23786162b',
+        balances: [
+          balance('aed', 0),
+          balance('btc', 0),
+          balance('eth', 0),
+          balance('ils', 0),
+          {
+            available: { amount: 0.000006739600762265052, currency: 'usdt', __typename: 'Balance' },
+            vault: { amount: 9.999993721976352e-9, currency: 'usdt', __typename: 'Balance' },
+            __typename: 'UserBalance',
+          },
+          balance('doge', 12.5),
+        ],
+        __typename: 'User',
+      },
+    },
+  };
+
+  const page = loadBridge('stake.com', { '/_api/graphql': () => BALANCES });
+  page.sendIn({ kind: 'config', capture: true, rates: false, poll: false });
+  await page.settle();
+
+  await page.pageFetch('/_api/graphql', {
+    body: JSON.stringify({ operationName: 'UserBalances' }),
+    headers: { authorization: 'secret' },
+  });
+  await page.settle();
+
+  const meta = page.kindsOf('meta');
+  check('a balances reply is read', meta.length, 1);
+
+  // Zeroes are dropped, and the reply being exhaustive is what makes that safe:
+  // a coin missing from this list is a coin holding nothing.
+  check('only what is actually held is sent', meta[0].meta.balances, [
+    { currency: 'USDT', amount: 0.000006739600762265052 },
+    { currency: 'DOGE', amount: 12.5 },
+  ]);
+  check('the smallest figure survives intact',
+    meta[0].meta.balances[0].amount, 0.000006739600762265052);
+  check('coins are upper-cased, as everywhere else',
+    meta[0].meta.balances.every((b) => b.currency === b.currency.toUpperCase()), true);
+
+  // The vault is money that cannot be bet from. Adding it in would make the
+  // wallet disagree with the bet ledger by exactly the amount put aside.
+  check('the vault is not added to the spendable balance',
+    meta[0].meta.balances[0].amount < 1e-8, false);
+  check('and does not appear on the bus at all',
+    JSON.stringify(page.posted).includes('vault'), false);
+
+  // This is account data, so it travels on the same switch the rakeback reader
+  // does — and the token that makes a replay possible still never leaves.
+  check('no captured header reaches the bus', JSON.stringify(page.posted).includes('secret'), false);
+
+  // An account holding nothing at all is an answer, not a failure to read.
+  const empty = loadBridge('stake.com', {
+    '/_api/graphql': () => ({ data: { user: { id: 'x', balances: [balance('btc', 0)] } } }),
+  });
+  empty.sendIn({ kind: 'config', capture: true, poll: false });
+  await empty.settle();
+  await empty.pageFetch('/_api/graphql', { body: JSON.stringify({ operationName: 'UserBalances' }) });
+  await empty.settle();
+  check('an empty wallet is reported as empty, not as nothing read',
+    empty.kindsOf('meta')[0]?.meta.balances, []);
+}
+
+console.log('\n-- Stake: reading balances is opt-in');
+{
+  // Same switch as the rakeback reader: it is account data, and the extension's
+  // whole posture is that account reading is something you turn on.
+  const page = loadBridge('stake.com', {
+    '/_api/graphql': () => ({ data: { user: { id: 'x', balances: [] } } }),
+  });
+  page.sendIn({ kind: 'config', capture: false, rates: true, poll: false });
+  await page.settle();
+
+  await page.pageFetch('/_api/graphql', { body: JSON.stringify({ operationName: 'UserBalances' }) });
+  await page.settle();
+  check('with account reading off, nothing is read', page.kindsOf('meta'), []);
+  check('and no request of our own is made', page.requested, []);
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall passed');
 process.exit(failures ? 1 : 0);

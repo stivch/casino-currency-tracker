@@ -1,18 +1,22 @@
 import { plotSeries } from './lib/chart.js';
-import { applyI18n, t, useMessages } from './lib/i18n.js';
-import { currencySymbol, formatMoney } from './lib/format.js';
-import { costReport, fiscalYearOf, realisedRtp, restate } from './lib/session.js';
+import { activeLanguage, applyI18n, t, useMessages } from './lib/i18n.js';
+import { currencySymbol, escapeHtml, formatMoney, formatMultiplier } from './lib/format.js';
+import { costReport, fiscalYearOf, realisedRtp, restate, winRate } from './lib/session.js';
 import { limitSwitchText } from './lib/notices.js';
-import { CASINOS, DEFAULTS, OPTIONAL_DOMAINS, TARGET_CURRENCIES, casinoForDomain, mirrorOrigins } from './lib/settings.js';
+import { CASINOS, DEFAULTS, OPTIONAL_DOMAINS, OVERLAY_FIELDS, TARGET_CURRENCIES, casinoForDomain, mirrorOrigins, overlayWindowSize } from './lib/settings.js';
 
 const $ = (id) => document.getElementById(id);
 
 const CHECKBOXES = ['enabled', 'trackSession', 'showHud', 'hoverTooltip', 'selectionTooltip',
-  'assumeUnlabeled', 'inlineAnnotate', 'showBadge', 'notifyLimits', 'notifyChasing', 'stakeRates', 'trackRakeback', 'rakebackPoll'];
-const NUMBERS = ['refreshMinutes', 'decimals', 'feePercent', 'sessionIdleMinutes'];
+  'assumeUnlabeled', 'inlineAnnotate', 'showBadge', 'notifyLimits', 'notifyChasing', 'stakeRates',
+  'trackRakeback', 'rakebackPoll', 'overlayCoin'];
+const NUMBERS = ['refreshMinutes', 'decimals', 'feePercent', 'sessionIdleMinutes', 'overlaySize'];
 // Percentages typed as text so "1.5" and a pasted "1.5%" both survive.
 const RATES = ['houseEdgePercent', 'rakebackPercent'];
-const SELECTS = ['targetCurrency', 'fiscalYearStart'];
+const SELECTS = ['targetCurrency', 'fiscalYearStart', 'overlayLayout'];
+// <input type="color"> is always a valid #rrggbb, so these need no parsing —
+// only their own listener, because they commit on `input` as you drag.
+const COLOURS = ['overlayColor', 'overlayBackground'];
 // Nullable: blank means "no limit", so these cannot go through the numeric path.
 const LIMITS = ['limitWager', 'limitLoss', 'limitWin', 'limitMinutes', 'alertAbove', 'alertBelow'];
 
@@ -24,6 +28,20 @@ let state = null;
 /** The fiat this page reports in. */
 const target = () => state?.settings?.targetCurrency || 'ILS';
 
+// Dates, times and counts in the language the page is written in.
+//
+// `toLocaleString()` with no locale takes the *browser's*, which is not the
+// same question: this page is English whatever Chrome is set to, and a Hebrew
+// Chrome was rendering its session dates and clock times accordingly. One
+// argument each, and they follow the bundle for free if a translation lands.
+const stamp = (value, options) => new Date(value).toLocaleString(activeLanguage(), options);
+const count = (value) => Number(value).toLocaleString(activeLanguage());
+
+/** "5 Aug 2026, 21:04" — a recorded session's start, as shown in tables. */
+const when = (value) => stamp(value, {
+  year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
+});
+
 /**
  * The currency picker, filled from the supported list.
  *
@@ -31,11 +49,16 @@ const target = () => state?.settings?.targetCurrency || 'ILS';
  * already translated into whichever language the page is being read in and
  * cannot drift out of date. A browser that will not name a code shows the code,
  * which is the thing people actually recognise anyway.
+ *
+ * The language comes from `activeLanguage()` rather than from `<html lang>`.
+ * Reading it off the document made this depend on `applyI18n` having run first,
+ * and on that attribute being right — which on a Hebrew Chrome it was not, so
+ * an English settings page listed its currencies in Hebrew.
  */
 function fillCurrencies() {
   let names = null;
   try {
-    names = new Intl.DisplayNames([document.documentElement.lang || 'en'], { type: 'currency' });
+    names = new Intl.DisplayNames([activeLanguage()], { type: 'currency' });
   } catch {
     names = null;
   }
@@ -55,7 +78,7 @@ function fillCurrencies() {
 
 /** The twelve months, named by Intl in the page's language rather than listed here. */
 function fillMonths() {
-  const lang = document.documentElement.lang || 'en';
+  const lang = activeLanguage();
   let format = null;
   try {
     format = new Intl.DateTimeFormat(lang, { month: 'long', timeZone: 'UTC' });
@@ -69,15 +92,66 @@ function fillMonths() {
   }).join('');
 }
 
+// ------------------------------------------------------------------ panes
+//
+// Which pane is showing is the URL fragment and nothing else. That is worth a
+// sentence, because the obvious alternative — a variable here plus a stored
+// preference — would have to be kept in step with the address bar anyway the
+// moment anyone used the back button or opened a link to #reports.
+
+/** The first pane, when the fragment names nothing this page has. */
+const FIRST_PAGE = 'general';
+
+function showPage(name) {
+  const pages = [...document.querySelectorAll('.page')];
+  const wanted = pages.some((page) => page.id === name) ? name : FIRST_PAGE;
+
+  for (const page of pages) page.classList.toggle('on', page.id === wanted);
+
+  for (const link of document.querySelectorAll('.nav-item')) {
+    const current = link.getAttribute('href') === `#${wanted}`;
+    // aria-current rather than a class of our own: it is what a screen reader
+    // reads out, and the stylesheet can select on it just as easily.
+    if (current) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  }
+
+  // Switching pane is arriving somewhere new, and arriving halfway down it is
+  // disorienting — but only scroll when there is somewhere to scroll back from.
+  if (window.scrollY > 0) window.scrollTo({ top: 0 });
+}
+
+const currentPage = () => decodeURIComponent(location.hash.replace(/^#/, ''));
+
+window.addEventListener('hashchange', () => showPage(currentPage()));
+
 async function send(message) {
   const response = await chrome.runtime.sendMessage(message);
   if (response?.error) throw new Error(response.error);
   return response;
 }
 
+/**
+ * The confirmation line, shown as a pill above everything for a moment.
+ *
+ * The timer is cleared and restarted rather than left to run: two saves a
+ * second apart used to leave the first one's timeout to hide the second's
+ * message early, which reads as a save that did not take.
+ */
+let statusTimer = null;
+
 function status(text) {
-  $('status').textContent = text;
-  if (text) setTimeout(() => { $('status').textContent = ''; }, 1600);
+  const box = $('status');
+  box.textContent = text;
+  box.classList.toggle('show', Boolean(text));
+
+  clearTimeout(statusTimer);
+  if (text) {
+    statusTimer = setTimeout(() => {
+      box.classList.remove('show');
+      box.textContent = '';
+    }, 1600);
+  }
 }
 
 function render() {
@@ -107,6 +181,7 @@ function render() {
   $('limitSwitchNote').className = switched ? 'hint warn' : 'hint';
   $('limitSwitchNote').textContent = switched;
 
+  renderOverlay();
   renderDiagnostics();
   renderMirrors();
 
@@ -118,14 +193,61 @@ function render() {
   // settings write rather than only when history is reloaded.
   renderYears();
 
-  const pinned = Boolean(settings.trackedSelector);
-  $('pinnedLabel').textContent = pinned
-    ? settings.trackedLabel || t('optPinnedElement', 'pinned element')
-    : t('optNothingPinned', 'Nothing pinned');
-  $('pinnedSelector').textContent = pinned
-    ? settings.trackedSelector
-    : t('optPinnedSub', 'Use “Pin an amount on the page” in the overlay on Stake.');
-  $('clearPin').disabled = !pinned;
+  renderPins();
+}
+
+/**
+ * One row per casino, saying what the readout follows there.
+ *
+ * Rendered rather than written into the markup because it is a row per entry in
+ * `CASINOS` — and because "nothing pinned" is no longer the same statement as
+ * "nothing to follow": with no pin the readout follows the site's own balance
+ * chip, and a page still headed *Nothing pinned* while the overlay showed a
+ * live balance would be describing the opposite of what was happening.
+ */
+function renderPins() {
+  const pins = state.settings.pins || {};
+
+  const rows = Object.values(CASINOS).map((casino) => {
+    const pin = pins[casino.id];
+    const label = pin
+      ? pin.label || t('optPinnedElement', 'pinned element')
+      : t('optPinAuto', 'the balance chip');
+
+    return `<div class="row">
+      <span class="grow"><span class="label">${escapeHtml(casino.name)} — ${escapeHtml(label)}</span>
+        <span class="sub selector">${pin
+          ? escapeHtml(pin.selector)
+          : t('optPinAutoSub', 'Automatic. Pin something on the page to follow that instead.')}</span></span>
+      ${pin ? `<button class="ghost" data-clear-pin="${casino.id}">${t('optClear', 'Clear')}</button>` : ''}
+    </div>`;
+  });
+
+  // The single pin from before pins were per site. Shown only while one exists,
+  // with a way to be rid of it: it is tried on every site, so an old path that
+  // happens to match something on a casino it was not made for is the one way
+  // this can follow the wrong number.
+  if (state.settings.trackedSelector) {
+    rows.push(`<div class="row">
+      <span class="grow"><span class="label">${t('optPinLegacy', 'Pinned before this was per site')}</span>
+        <span class="sub selector">${escapeHtml(state.settings.trackedSelector)}</span></span>
+      <button class="ghost" data-clear-pin="legacy">${t('optClear', 'Clear')}</button>
+    </div>`);
+  }
+
+  const list = $('pinnedList');
+  list.innerHTML = rows.join('');
+
+  for (const button of list.querySelectorAll('[data-clear-pin]')) {
+    button.addEventListener('click', () => {
+      const site = button.dataset.clearPin;
+      if (site === 'legacy') return void patch({ trackedSelector: '', trackedLabel: '' });
+
+      const next = { ...(state.settings.pins || {}) };
+      delete next[site];
+      patch({ pins: next });
+    });
+  }
 }
 
 // ---------------------------------------------------------------- mirrors
@@ -196,10 +318,105 @@ async function renderMirrors() {
   }
 }
 
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// ------------------------------------------------------- streamer overlay
+
+/**
+ * The field list is built from the registry rather than written into the HTML,
+ * so adding a field to `OVERLAY_FIELDS` puts a tick here without touching this
+ * page. Everything else in the section is an ordinary control.
+ */
+function renderOverlay() {
+  const { settings } = state;
+  const list = $('overlayFields');
+  const chosen = new Set(settings.overlayFields || []);
+  const labels = settings.overlayLabels || {};
+
+  // Rebuilt whole rather than patched, and it must not be rebuilt while
+  // somebody is typing into it — a re-render mid-word would take the caret with
+  // it. Every write here goes through patch(), which calls render(), so tabbing
+  // from one label to the next would otherwise land the caret nowhere. Only the
+  // rebuild is skipped; the controls below it are still brought up to date.
+  // The listeners are bound to the elements this builds, so the rebuild and
+  // the binding have to be skipped together — binding again over elements that
+  // already have listeners is how one keystroke becomes four settings writes.
+  if (!list.contains(document.activeElement)) {
+    list.innerHTML = OVERLAY_FIELDS.map((field) => {
+      const name = escapeHtml(t(field.key, field.label));
+      return `<div class="field">
+        <label><input type="checkbox" data-field="${field.id}"${chosen.has(field.id) ? ' checked' : ''}>${name}</label>
+        <input type="text" data-label="${field.id}" maxlength="24" placeholder="${name}"
+          value="${escapeHtml(labels[field.id] || '')}">
+      </div>`;
+    }).join('');
+
+    for (const box of list.querySelectorAll('[data-field]')) {
+      box.addEventListener('change', () => {
+        const picked = [...list.querySelectorAll('[data-field]')]
+          .filter((el) => el.checked).map((el) => el.dataset.field);
+        patch({ overlayFields: picked });
+      });
+    }
+
+    for (const box of list.querySelectorAll('[data-label]')) {
+      // change, not input: one settings write per keystroke would be one state
+      // mirror and one overlay repaint per keystroke.
+      box.addEventListener('change', () => {
+        const next = {};
+        for (const el of list.querySelectorAll('[data-label]')) next[el.dataset.label] = el.value;
+        patch({ overlayLabels: next });
+      });
+      box.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') event.target.blur();
+      });
+    }
+  }
+
+  for (const id of COLOURS) $(id).value = settings[id];
+
+  // Ticking nothing is allowed — it is a set of choices, not a required one —
+  // but it produces a blank window, and being told that here beats finding out
+  // by capturing it.
+  const empty = chosen.size === 0;
+  $('overlayHint').className = empty ? 'sub warn' : 'sub';
+  $('overlayHint').textContent = empty
+    ? t('optOverlayNoFields', 'Nothing ticked, so the window will be empty.')
+    : t('optOverlayOpenSub', 'Opens now, and updates itself as you play. Close it to stop broadcasting.');
 }
+
+/**
+ * Open the overlay in its own window.
+ *
+ * A `popup` window rather than a tab: it has no tab strip, no address bar and
+ * no bookmarks bar, which is three rows of browser furniture that would
+ * otherwise be inside the capture. Sized to suit the layout, because a row of
+ * figures and a stack of them want opposite shapes.
+ */
+let overlayWindowId = null;
+
+async function openOverlay() {
+  // Raise the one that is already open rather than adding a second. Two
+  // overlays on the same session is never what was wanted, and the spare is
+  // the one that ends up behind a scene still broadcasting.
+  if (overlayWindowId !== null) {
+    const raised = await chrome.windows.update(overlayWindowId, { focused: true }).catch(() => null);
+    if (raised) return;
+    overlayWindowId = null; // closed since; fall through and open a new one
+  }
+
+  const created = await chrome.windows.create({
+    url: chrome.runtime.getURL('src/overlay.html'),
+    type: 'popup',
+    ...overlayWindowSize(state.settings),
+  });
+
+  overlayWindowId = created?.id ?? null;
+}
+
+// The window can be closed from its own title bar, and this page would go on
+// trying to raise a window that is not there.
+chrome.windows.onRemoved.addListener((id) => {
+  if (id === overlayWindowId) overlayWindowId = null;
+});
 
 function mirrorNote(text, tone = '') {
   $('mirrorMsg').className = tone ? `hint ${tone}` : 'hint';
@@ -323,7 +540,7 @@ function renderGames(totals) {
       const rtp = realisedRtp(row.wagered, row.returned, row.bets);
       return `<tr>
         <td>${escapeHtml(row.game || t('gameUnnamed', 'unnamed'))}</td>
-        <td>${row.bets.toLocaleString()}</td>
+        <td>${count(row.bets)}</td>
         <td>${num(row.wagered)}</td>
         <td class="${signClass(profit)}">${profit > 0 ? '+' : ''}${num(profit)}</td>
         <td>${rtp === null ? '—' : `${rtp.toFixed(2)}%`}</td>
@@ -412,11 +629,24 @@ function renderHistory(totals) {
         // Below the sample threshold this is variance with a percent sign on
         // it, so it is a dash rather than a verdict on the games.
         const rtp = realisedRtp(bucket.wagered, bucket.returned, bucket.bets);
+        const won = winRate(bucket.wins, bucket.bets);
         const net = bucket.deposited - bucket.withdrawn;
+
+        // A best multiplier of null means no session recorded one, which is not
+        // the same claim as a best of zero. Sessions closed before this was
+        // tracked land here, so the dash says which it is.
+        const best = bucket.best && Number.isFinite(bucket.best.multiplier)
+          ? `${formatMultiplier(bucket.best.multiplier)}${bucket.best.game
+            ? ` <span class="dim">${escapeHtml(bucket.best.game)}</span>` : ''}`
+          : `<span class="flag" title="${t('bestNone', 'No session has recorded one yet. Sessions closed before this was tracked carry no multiplier.').replace(/"/g, '&quot;')}">—</span>`;
 
         return `<div class="card"><h3>${t('cardLifetime', `${bucket.currency} — lifetime`, [bucket.currency])}</h3><dl>
         <dt>${t('colSessions', 'Sessions')}</dt><dd>${bucket.sessions}</dd>
-        <dt>${t('colBets', 'Bets')}</dt><dd>${bucket.bets.toLocaleString()}</dd>
+        <dt>${t('colBets', 'Bets')}</dt><dd>${count(bucket.bets)}</dd>
+        <dt title="${t('winRateWhy', 'How often a bet came back with anything at all. A count, not an estimate — it needs no minimum sample.').replace(/"/g, '&quot;')}">${t('colWonPct', 'Bets that paid')}</dt>
+        <dd>${won === null ? '—' : `${won.toFixed(1)}%`}</dd>
+        <dt title="${t('bestWhy', 'The highest payout multiplier recorded, across every session in this coin.').replace(/"/g, '&quot;')}">${t('colBest', 'Best multiplier')}</dt>
+        <dd>${best}</dd>
         <dt>${t('colWagered', 'Wagered')}</dt><dd>${num(bucket.wagered)}</dd>
         <dt>${t('colPl', 'P/L')}</dt><dd class="${signClass(bucket.profit)}">${bucket.profit > 0 ? '+' : ''}${num(bucket.profit)}</dd>
         <dt title="${t('rtpWhy', 'What came back per unit staked, over every recorded bet.').replace(/"/g, '&quot;')}">${t('colRtp', 'Return')}</dt>
@@ -440,24 +670,27 @@ function renderHistory(totals) {
   const mark = currencySymbol(target());
   const head = `<thead><tr><th>${t('colStarted', 'Started')}</th><th>${t('colLength', 'Length')}</th>
     <th>${t('colCoin', 'Coin')}</th><th>${t('colBets', 'Bets')}</th><th>${t('colWl', 'W/L')}</th>
+    <th>${t('colBestShort', 'Best')}</th>
     <th>${t('colWagered', 'Wagered')}</th><th>${t('colPl', 'P/L')}</th><th>${t('colPlMoney', `P/L (${mark})`, [mark])}</th>
     <th>${t('colBooks', 'Books')}</th></tr></thead>`;
 
   const rows = history.length
     ? history
         .map((e) => {
-          const started = new Date(e.startedAt);
           // Anything recorded before the payout-column fix over-charged every
           // losing bet. It cannot be recomputed, so it is flagged, not hidden.
           const suspect = e.calc !== 2;
           return `<tr class="${suspect ? 'suspect' : ''}">
-            <td>${started.toLocaleDateString()} ${started.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${
+            <td>${when(e.startedAt)}${
               suspect ? '<span class="flag" title="Recorded before the payout fix — P/L overstates losses">⚠</span>' : ''
             }</td>
             <td>${duration((e.endedAt || e.startedAt) - e.startedAt)}</td>
             <td>${e.currency || '—'}</td>
             <td>${e.bets}</td>
             <td>${e.wins}/${e.losses}</td>
+            <td title="${escapeHtml(e.best?.game || '')}">${
+              e.best && Number.isFinite(e.best.multiplier) ? formatMultiplier(e.best.multiplier) : '—'
+            }</td>
             <td>${num(e.wagered)}</td>
             <td class="${signClass(e.profit)}">${e.profit > 0 ? '+' : ''}${num(e.profit)}</td>
             <td class="${signClass(e.profit)}">${closedAt(e, e.profit)}</td>
@@ -468,7 +701,7 @@ function renderHistory(totals) {
           </tr>`;
         })
         .join('')
-    : `<tr><td class="empty" colspan="9">${t('historyEmpty', 'Nothing recorded yet — play a session and it will appear here.')}</td></tr>`;
+    : `<tr><td class="empty" colspan="10">${t('historyEmpty', 'Nothing recorded yet — play a session and it will appear here.')}</td></tr>`;
 
   $('historyTable').innerHTML = `${head}<tbody>${rows}</tbody>`;
   renderYears();
@@ -537,7 +770,7 @@ function renderYears() {
         .map((y) => `<tr>
           <td>${y.label}</td>
           <td>${y.sessions}${left(y) ? `<span class="flag" title="${left(y)} session${left(y) === 1 ? '' : 's'} cannot be shown in ${target()} — ${y.unpriced} closed with no rate at all, ${y.legacy} can only be read in the currency ${y.legacy === 1 ? 'it' : 'they'} closed in">⚠</span>` : ''}</td>
-          <td>${y.bets.toLocaleString()}</td>
+          <td>${count(y.bets)}</td>
           <td>${duration(y.ms)}</td>
           <td>${fiat(y.wagered)}</td>
           <td class="${signClass(y.profit)}">${y.profit > 0 ? '+' : ''}${fiat(y.profit)}</td>
@@ -602,10 +835,9 @@ function chartable() {
 
   for (const [index, entry] of history.entries()) {
     if (!(entry.curve?.length > 1)) continue;
-    const started = new Date(entry.startedAt);
     options.push({
       id: `h${index}`,
-      label: `${started.toLocaleDateString()} ${started.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      label: when(entry.startedAt),
       entry,
     });
   }
@@ -716,7 +948,7 @@ function renderDiagnostics() {
           (e) => `<div class="entry">
             <div class="where">${e.where}${e.count > 1 ? ` <span style="opacity:.7">×${e.count}</span>` : ''}</div>
             <div class="msg">${String(e.message).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[c])}</div>
-            <div class="meta">${new Date(e.at).toLocaleString()}${e.url ? ` · ${new URL(e.url).pathname}` : ''}</div>
+            <div class="meta">${stamp(e.at)}${e.url ? ` · ${new URL(e.url).pathname}` : ''}</div>
           </div>`,
         )
         .join('')
@@ -735,7 +967,7 @@ function renderBetLog() {
     <th>${t('colProfit', 'Profit')}</th></tr></thead>`;
   const rows = log
     .map((b) => `<tr>
-      <td>${new Date(b.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
+      <td>${stamp(b.at, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
       <td>${b.game || '—'}</td>
       <td>${num(b.amount)}</td>
       <td>${num(b.gross)}</td>
@@ -761,7 +993,8 @@ function toCsv() {
   // another, and a blank money column has a reason next to it.
   const header = ['started', 'ended', 'minutes', 'currency', 'bets', 'wins', 'losses',
     'wagered', 'returned', 'profit', 'closed_in', 'rate_at_close', 'fiat_currency',
-    'profit_fiat', 'restated', 'biggest_win', 'biggest_loss', 'peak_profit', 'trough_profit', 'gaps'];
+    'profit_fiat', 'restated', 'biggest_win', 'biggest_loss', 'best_multiplier', 'best_game',
+    'peak_profit', 'trough_profit', 'gaps'];
 
   const escape = (v) => {
     const s = String(v ?? '');
@@ -782,7 +1015,12 @@ function toCsv() {
       code,
       Number.isFinite(shown.value) ? shown.value : '',
       shown.restated ? 'yes' : 'no',
-      e.biggestWin, e.biggestLoss, e.peakProfit, e.troughProfit, e.gaps ?? 0,
+      e.biggestWin, e.biggestLoss,
+      // Blank rather than 0 where no multiplier was recorded: a session from
+      // before this was tracked did not have a best of nothing.
+      Number.isFinite(e.best?.multiplier) ? e.best.multiplier : '',
+      e.best?.game ?? '',
+      e.peakProfit, e.troughProfit, e.gaps ?? 0,
     ].map(escape).join(',');
   });
 
@@ -839,12 +1077,12 @@ function renderKey() {
   }
 
   $('keyUsage').textContent =
-    `${key.used.toLocaleString()} / ${key.budget.toLocaleString()} keyed calls in ${key.month}` +
-    ` (Demo cap ${key.limit.toLocaleString()})` +
+    `${count(key.used)} / ${count(key.budget)} keyed calls in ${key.month}` +
+    ` (Demo cap ${count(key.limit)})` +
     (key.exhausted ? ' — budget spent, now running keyless' : '');
 
   const message = $('keyMsg');
-  const perMonth = key.projected.toLocaleString();
+  const perMonth = count(key.projected);
   const interval = `A ${settings.refreshMinutes}-minute refresh`;
 
   if (key.mode === 'off') {
@@ -855,13 +1093,13 @@ function renderKey() {
   } else if (key.mode === 'reserve') {
     message.className = 'hint';
     message.textContent =
-      `${interval} works out at about ${perMonth} calls/month, far past the ${key.limit.toLocaleString()} cap, ` +
+      `${interval} works out at about ${perMonth} calls/month, far past the ${count(key.limit)} cap, ` +
       `so the key is held in reserve: every call goes keyless, and the key is spent only to recover from a 429. ` +
       `That costs a few dozen calls a month instead of exhausting the allowance in under a week.`;
   } else {
     message.className = 'hint good';
     message.textContent =
-      `${interval} projects to about ${perMonth} calls/month — inside the ${key.budget.toLocaleString()} budget, ` +
+      `${interval} projects to about ${perMonth} calls/month — inside the ${count(key.budget)} budget, ` +
       `so the key is used on every call.`;
   }
 }
@@ -891,6 +1129,15 @@ for (const id of NUMBERS) {
   // change, not input: committing on every keystroke would clamp mid-typing.
   $(id).addEventListener('change', (event) => patch({ [id]: event.target.value }));
 }
+
+for (const id of COLOURS) {
+  // change, not input: a colour picker fires input continuously while the
+  // cursor is dragged around the wheel, and each one is a settings write and a
+  // state mirror. The value on release is the only one anybody chose.
+  $(id).addEventListener('change', (event) => patch({ [id]: event.target.value }));
+}
+
+$('openOverlay').addEventListener('click', () => openOverlay());
 
 // Changing either rate redraws the cost report, which patch() does by way of
 // render() — the figures behind it have not moved, only what they are read
@@ -928,7 +1175,8 @@ $('clearDiagnostics').addEventListener('click', async () => {
   status(t('statusDiagCleared', 'Diagnostics cleared.'));
 });
 
-$('clearPin').addEventListener('click', () => patch({ trackedSelector: '', trackedLabel: '' }));
+// Clearing a pin is wired up in renderPins, beside the row it belongs to —
+// there is one button per casino now, not one button.
 
 // ------------------------------------------------------------------ API key
 
@@ -1035,6 +1283,17 @@ $('clearHistory').addEventListener('click', async () => {
   renderHistory(response.totals);
   status(t('statusHistoryCleared', 'History cleared.'));
 });
+
+// The pane comes up before the state does: it depends on nothing but the
+// fragment, and a page that shows every section at once for the length of a
+// round trip to the service worker is a visible flash of the wrong layout.
+showPage(currentPage());
+
+try {
+  $('appVersion').textContent = `v${chrome.runtime.getManifest().version}`;
+} catch {
+  // A version nobody can read is not worth failing the page over.
+}
 
 state = await send({ type: 'getState' });
 useMessages(state.i18n);

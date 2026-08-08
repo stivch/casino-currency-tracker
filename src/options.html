@@ -7,407 +7,556 @@
 </head>
 <body class="options">
 
-  <h1 data-i18n="optTitle">Casino Currency Tracker</h1>
-  <p class="hint" data-i18n="optIntro">Live rate from CoinGecko, falling back to a USD-based feed. Works with no API key;
-    add a Demo key below to stop sharing a rate limit with everyone on your IP.</p>
+<div class="shell">
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optTarget">Convert to</span>
-        <span class="sub" data-i18n="optTargetSub">The currency every amount is shown in. Changing it re-asks the rate
-          providers, re-reads the casinos' price tables, and converts your money limits once so they still mean what you
-          set them to.</span></span>
-      <select id="targetCurrency"></select>
-    </div>
-  </div>
-  <p class="hint" id="limitSwitchNote" hidden></p>
-
-  <h2 data-i18n="optRate">Rate</h2>
-
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optStakeRates">Use the casino's own price table</span>
-        <span class="sub" data-i18n="optStakeRatesSub">Both sites publish a currency table, most major fiats included, to price what they
-          show you — and converting with it means converting with the same number the balance on screen was drawn with.
-          Stake's app fetches its own every few seconds, so reading it costs no request. Duel fetches its one once per page
-          load, so while a Duel tab is open, visible and focused, this asks for it once a minute; that table is public and
-          carries no account data. The providers stay as the fallback for everywhere else.</span></span>
-      <label class="switch"><input type="checkbox" id="stakeRates"><span></span></label>
+  <!-- The nav is links rather than buttons, so the browser gives back and
+       forward, middle-click, and keyboard focus order for free. Which pane is
+       showing is the URL fragment; nothing here has to remember it. -->
+  <aside class="sidenav">
+    <div class="brand">
+      <span class="brand-name" data-i18n="optTitle">Casino Currency Tracker</span>
+      <span class="brand-version" id="appVersion"></span>
     </div>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optRefreshEvery">Refresh every</span>
-        <span class="sub" data-i18n="optRefreshEverySub">Minutes. Chrome will not fire more often than once a minute.</span></span>
-      <input type="number" id="refreshMinutes" min="1" max="1440" step="1">
-    </div>
+    <nav id="nav">
+      <a class="nav-item" href="#general" data-i18n="navGeneral">General</a>
+      <a class="nav-item" href="#page" data-i18n="navOnPage">On the page</a>
+      <a class="nav-item" href="#session" data-i18n="navSession">Session &amp; limits</a>
+      <a class="nav-item" href="#alerts" data-i18n="navAlerts">Alerts</a>
+      <a class="nav-item" href="#overlay" data-i18n="navOverlay">Streamer overlay</a>
+      <a class="nav-item" href="#reports" data-i18n="navReports">Reports</a>
+      <a class="nav-item" href="#sites" data-i18n="navSites">Sites</a>
+      <a class="nav-item" href="#data" data-i18n="navData">Backup &amp; data</a>
+    </nav>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optDecimals">Decimal places</span>
-        <span class="sub" data-i18n="optDecimalsSub">How converted amounts are rounded for display. A currency with no minor unit — the yen — ignores this and shows whole units.</span></span>
-      <input type="number" id="decimals" min="0" max="8" step="1">
-    </div>
+    <!-- Attribution, which both providers' free tiers require, and which is
+         simply true: neither of these numbers is ours. The licence is here
+         because "as is, no warranty" belongs where the software is configured,
+         not only in a file nobody opens. -->
+    <p class="credit">
+      <span data-i18n="creditPrices">Prices by</span>
+      <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a> ·
+      <span data-i18n="creditRates">exchange rates by</span>
+      <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">exchangerate-api.com</a>
+      <br>
+      <span data-i18n="creditLicence">MIT licensed, and provided as is with no warranty. It reports; it does not
+        intervene, and nothing here is tax or financial advice.</span>
+    </p>
+  </aside>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optSpread">Off-ramp spread %</span>
-        <span class="sub" data-i18n="optSpreadSub">What your exchange actually charges. Subtracted from the quoted rate so the
-          figure matches what you would really receive. 0 shows the raw mid-price.</span></span>
-      <input type="number" id="feePercent" min="-50" max="50" step="0.1">
-    </div>
+  <main class="content">
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optManual">Manual rate override</span>
-        <span class="sub" data-i18n="optManualSub">Leave blank to use the live feed. Set a number to ignore it entirely.</span></span>
-      <input type="text" id="manualRate" placeholder="live" data-i18n-ph="optManualPh" inputmode="decimal">
-    </div>
-  </div>
+    <!-- ------------------------------------------------------------ general -->
+    <section class="page" id="general">
+      <header class="page-head">
+        <h1 data-i18n="navGeneral">General</h1>
+        <p class="hint" data-i18n="optIntro">Live rate from CoinGecko, falling back to a USD-based feed. Works with no API key;
+          add a Demo key below to stop sharing a rate limit with everyone on your IP.</p>
+      </header>
 
-  <h2 data-i18n="optKey">CoinGecko API key</h2>
-  <p class="hint" data-i18n="optKeyIntro">Optional. A Demo key raises the per-minute ceiling from the keyless pool
-    (~10–30/min, shared with everyone on your IP) to 100/min — but adds a 10,000 calls/month
-    cap that keyless does not have. Stored on this machine only, never synced, and never
-    exposed to the content script running on Stake.</p>
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optTarget">Convert to</span>
+            <span class="sub" data-i18n="optTargetSub">The currency every amount is shown in. Changing it re-asks the rate
+              providers, re-reads the casinos' price tables, and converts your money limits once so they still mean what you
+              set them to.</span></span>
+          <select id="targetCurrency"></select>
+        </div>
+      </div>
+      <p class="hint" id="limitSwitchNote" hidden></p>
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="label" id="keyState" data-i18n="optNoKey">No key installed</span>
-        <span class="sub" id="keyUsage"></span></span>
-    </div>
+      <h2 data-i18n="optRate">Rate</h2>
 
-    <div class="row">
-      <input type="password" id="apiKey" class="grow-input" placeholder="CG-…" autocomplete="off" spellcheck="false">
-      <button id="saveKey" data-i18n="optSave">Save</button>
-      <button class="ghost" id="testKey" data-i18n="optTest">Test</button>
-      <button class="ghost" id="clearKey" data-i18n="optClear">Clear</button>
-    </div>
-  </div>
-  <p class="hint" id="keyMsg"></p>
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optStakeRates">Use the casino's own price table</span>
+            <span class="sub" data-i18n="optStakeRatesSub">Both sites publish a currency table, most major fiats included, to price what they
+              show you — and converting with it means converting with the same number the balance on screen was drawn with.
+              Stake's app fetches its own every few seconds, so reading it costs no request. Duel fetches its one once per page
+              load, so while a Duel tab is open, visible and focused, this asks for it once a minute; that table is public and
+              carries no account data. The providers stay as the fallback for everywhere else.</span></span>
+          <label class="switch"><input type="checkbox" id="stakeRates"><span></span></label>
+        </div>
 
-  <h2 data-i18n="optOnPage">On the page</h2>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optRefreshEvery">Refresh every</span>
+            <span class="sub" data-i18n="optRefreshEverySub">Minutes. Chrome will not fire more often than once a minute.</span></span>
+          <input type="number" id="refreshMinutes" min="1" max="1440" step="1">
+        </div>
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optEnabled">Extension enabled</span>
-        <span class="sub" data-i18n="optEnabledSub">Off removes the overlay from Stake entirely.</span></span>
-      <label class="switch"><input type="checkbox" id="enabled"><span></span></label>
-    </div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optDecimals">Decimal places</span>
+            <span class="sub" data-i18n="optDecimalsSub">How converted amounts are rounded for display. A currency with no minor unit — the yen — ignores this and shows whole units.</span></span>
+          <input type="number" id="decimals" min="0" max="8" step="1">
+        </div>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optTrack">Track session P/L and wager</span>
-        <span class="sub" data-i18n="optTrackSub">Exact stakes and payouts per bet, deduplicated by bet id, and only ever
-          your own. On Stake that comes off the “My Bets” table by watching it re-render — the All Bets tab is ignored.
-          Duel has no bet table, so its own transaction feed stands in: just as exact, but it has to be asked for, so while
-          a Duel tab is open, visible and focused, this reads the newest page every 15 seconds.</span></span>
-      <label class="switch"><input type="checkbox" id="trackSession"><span></span></label>
-    </div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optSpread">Off-ramp spread %</span>
+            <span class="sub" data-i18n="optSpreadSub">What your exchange actually charges. Subtracted from the quoted rate so the
+              figure matches what you would really receive. 0 shows the raw mid-price.</span></span>
+          <input type="number" id="feePercent" min="-50" max="50" step="0.1">
+        </div>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optHud">Floating readout</span>
-        <span class="sub" data-i18n="optHudSub">Draggable panel with the rate and your pinned amount.</span></span>
-      <label class="switch"><input type="checkbox" id="showHud"><span></span></label>
-    </div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optManual">Manual rate override</span>
+            <span class="sub" data-i18n="optManualSub">Leave blank to use the live feed. Set a number to ignore it entirely.</span></span>
+          <input type="text" id="manualRate" placeholder="live" data-i18n-ph="optManualPh" inputmode="decimal">
+        </div>
+      </div>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optHover">Convert on hover</span>
-        <span class="sub" data-i18n="optHoverSub">Tooltip when you point at an amount.</span></span>
-      <label class="switch"><input type="checkbox" id="hoverTooltip"><span></span></label>
-    </div>
+      <h2 data-i18n="optKey">CoinGecko API key</h2>
+      <p class="hint" data-i18n="optKeyIntro">Optional. A Demo key raises the per-minute ceiling from the keyless pool
+        (~10–30/min, shared with everyone on your IP) to 100/min — but adds a 10,000 calls/month
+        cap that keyless does not have. Stored on this machine only, never synced, and never
+        exposed to the content script running on Stake.</p>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optSelection">Convert on selection</span>
-        <span class="sub" data-i18n="optSelectionSub">Highlight any number to convert it, labelled or not.</span></span>
-      <label class="switch"><input type="checkbox" id="selectionTooltip"><span></span></label>
-    </div>
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="label" id="keyState" data-i18n="optNoKey">No key installed</span>
+            <span class="sub" id="keyUsage"></span></span>
+        </div>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optUnlabeled">Assume unlabelled numbers are USDT</span>
-        <span class="sub" data-i18n="optUnlabeledSub">Stake's header balance has no currency text next to it. Turning this on
-          reads bare numbers as money — which also means odds and multipliers get converted.</span></span>
-      <label class="switch"><input type="checkbox" id="assumeUnlabeled"><span></span></label>
-    </div>
+        <div class="row">
+          <input type="password" id="apiKey" class="grow-input" placeholder="CG-…" autocomplete="off" spellcheck="false">
+          <button id="saveKey" data-i18n="optSave">Save</button>
+          <button class="ghost" id="testKey" data-i18n="optTest">Test</button>
+          <button class="ghost" id="clearKey" data-i18n="optClear">Clear</button>
+        </div>
+      </div>
+      <p class="hint" id="keyMsg"></p>
+    </section>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optInline">Annotate amounts inline</span>
-        <span class="sub" data-i18n="optInlineSub">Appends the converted figure after amounts that carry a currency label. Applied as a CSS
-          rule rather than by inserting elements, so it cannot break Stake's own rendering.</span></span>
-      <label class="switch"><input type="checkbox" id="inlineAnnotate"><span></span></label>
-    </div>
-  </div>
+    <!-- ------------------------------------------------------- on the page -->
+    <section class="page" id="page">
+      <header class="page-head">
+        <h1 data-i18n="navOnPage">On the page</h1>
+        <p class="hint" data-i18n="navOnPageSub">What the extension does while you have a casino open — what it converts,
+          what it reads, and what it draws.</p>
+      </header>
 
-  <h2 data-i18n="optHistory">Session history</h2>
-  <p class="hint" data-i18n="optHistoryIntro">Sessions are filed automatically once they go quiet, and whenever you reset one.
-    Each is recorded with the rate that applied when it closed, so an old session keeps
-    the figure it actually had rather than being restated at today's rate. The coin's dollar price and the
-    exchange-rate table are stored alongside it, so the same session can be read in a currency you pick later —
-    still at that evening's rates.</p>
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optEnabled">Extension enabled</span>
+            <span class="sub" data-i18n="optEnabledSub">Off removes the overlay from Stake entirely.</span></span>
+          <label class="switch"><input type="checkbox" id="enabled"><span></span></label>
+        </div>
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optIdle">End a session after</span>
-        <span class="sub" data-i18n="optIdleSub">Minutes without a bet before the session is considered finished.</span></span>
-      <input type="number" id="sessionIdleMinutes" min="1" max="1440" step="1">
-    </div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optTrack">Track session P/L and wager</span>
+            <span class="sub" data-i18n="optTrackSub">Exact stakes and payouts per bet, deduplicated by bet id, and only ever
+              your own. On Stake that comes off the “My Bets” table by watching it re-render — the All Bets tab is ignored.
+              Duel has no bet table, so its own transaction feed stands in: just as exact, but it has to be asked for, so while
+              a Duel tab is open, visible and focused, this reads the newest page every 15 seconds.</span></span>
+          <label class="switch"><input type="checkbox" id="trackSession"><span></span></label>
+        </div>
 
-    <div class="row">
-      <span class="grow"><span class="label" id="optLimWagerLabel">Wager limit</span>
-        <span class="sub" data-i18n="optLimWagerSub">Flags in the overlay once this session's turnover passes it. Blank = off.</span></span>
-      <input type="text" id="limitWager" placeholder="off" data-i18n-ph="popOff" inputmode="decimal">
-    </div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optHud">Floating readout</span>
+            <span class="sub" data-i18n="optHudSub">Draggable panel with the rate and your pinned amount.</span></span>
+          <label class="switch"><input type="checkbox" id="showHud"><span></span></label>
+        </div>
 
-    <div class="row">
-      <span class="grow"><span class="label" id="optLimLossLabel">Loss limit</span>
-        <span class="sub" data-i18n="optLimLossSub">Flags once the session is down by this much. Blank = off.</span></span>
-      <input type="text" id="limitLoss" placeholder="off" data-i18n-ph="popOff" inputmode="decimal">
-    </div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optHover">Convert on hover</span>
+            <span class="sub" data-i18n="optHoverSub">Tooltip when you point at an amount.</span></span>
+          <label class="switch"><input type="checkbox" id="hoverTooltip"><span></span></label>
+        </div>
 
-    <div class="row">
-      <span class="grow"><span class="label" id="optLimWinLabel">Win limit</span>
-        <span class="sub" data-i18n="optLimWinSub">Flags once the session is up by this much — a take-profit marker. All three
-          are in the currency you convert to, compared at the current rate. They can also be set straight from the
-          toolbar popup.</span></span>
-      <input type="text" id="limitWin" placeholder="off" data-i18n-ph="popOff" inputmode="decimal">
-    </div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optSelection">Convert on selection</span>
+            <span class="sub" data-i18n="optSelectionSub">Highlight any number to convert it, labelled or not.</span></span>
+          <label class="switch"><input type="checkbox" id="selectionTooltip"><span></span></label>
+        </div>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optLimTime">Time limit (minutes)</span>
-        <span class="sub" data-i18n="optLimTimeSub">Flags once the session has been running this long. Counted from its first
-          bet, not from opening the tab, and it needs no rate — so it applies to every coin. Blank = off.</span></span>
-      <input type="text" id="limitMinutes" placeholder="off" data-i18n-ph="popOff" inputmode="numeric">
-    </div>
-  </div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optUnlabeled">Assume unlabelled numbers are USDT</span>
+            <span class="sub" data-i18n="optUnlabeledSub">Stake's header balance has no currency text next to it. Turning this on
+              reads bare numbers as money — which also means odds and multipliers get converted.</span></span>
+          <label class="switch"><input type="checkbox" id="assumeUnlabeled"><span></span></label>
+        </div>
 
-  <h2 data-i18n="optAlerts">Alerts</h2>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optInline">Annotate amounts inline</span>
+            <span class="sub" data-i18n="optInlineSub">Appends the converted figure after amounts that carry a currency label. Applied as a CSS
+              rule rather than by inserting elements, so it cannot break Stake's own rendering.</span></span>
+          <label class="switch"><input type="checkbox" id="inlineAnnotate"><span></span></label>
+        </div>
+      </div>
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optBadge">Toolbar badge</span>
-        <span class="sub" data-i18n="optBadgeSub">Session P/L in your currency on the extension icon while a session is running,
-          the rate when one is not. Green up, red down.</span></span>
-      <label class="switch"><input type="checkbox" id="showBadge"><span></span></label>
-    </div>
+      <h2 data-i18n="optPinned">Pinned amount</h2>
+      <p class="hint" data-i18n="optPinnedIntro">The readout follows each site's own balance chip on its own, so there is
+        normally nothing to do here. Both sites tag that chip with an id they keep stable across releases, while the
+        markup underneath it is regenerated whenever the balance changes — which is why following the chip survives what
+        a pin on the digits does not. Pin something yourself only to follow a <em>different</em> number; it is remembered
+        per site, and if it ever stops resolving the readout falls back to the chip rather than asking to be pinned again.</p>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optNotify">Notify when a limit is crossed</span>
-        <span class="sub" data-i18n="optNotifySub">A desktop notice, once per limit per session. The overlay only reaches you
-          when Stake is the tab you are looking at.</span></span>
-      <label class="switch"><input type="checkbox" id="notifyLimits"><span></span></label>
-    </div>
+      <div class="group" id="pinnedList"></div>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optChasing">Say when stakes climb while losing</span>
-        <span class="sub" data-i18n="optChasingSub">One notice per session, if the stakes get to around three times what the
-          session opened with while it is down. Raising stakes to win back losses is hard to notice from the inside,
-          because each raise on its own looks reasonable. It reports the figures and nothing else — no advice, and
-          nothing is blocked.</span></span>
-      <label class="switch"><input type="checkbox" id="notifyChasing"><span></span></label>
-    </div>
+      <h2 data-i18n="optStake">Casino account</h2>
 
-    <div class="row">
-      <span class="grow"><span class="label" id="optAlertAboveLabel">Alert when the rate rises above</span>
-        <span class="sub" data-i18n="optAlertAboveSub">A desktop notice when the effective USDT rate crosses this line upward.
-          Fires on the crossing, once — not again until the rate has dipped back under. Blank = off.</span></span>
-      <input type="text" id="alertAbove" placeholder="off" data-i18n-ph="popOff" inputmode="decimal">
-    </div>
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optAccountRead">Read rakeback, VIP progress and balances</span>
+            <span class="sub" data-i18n="optAccountReadSub">Reads the account data the casino's own app already fetches, and shows
+              the rakeback balance converted — VIP progress on Stake, your level on Duel. On Stake it also reads your wallet
+              balances, which is what lets the readout show one when the balance chip is not on the page. Watching only: it
+              adds no requests of its own until you ask it to, with the refresh button or the poll below.</span></span>
+          <label class="switch"><input type="checkbox" id="trackRakeback"><span></span></label>
+        </div>
 
-    <div class="row">
-      <span class="grow"><span class="label" id="optAlertBelowLabel">Alert when the rate falls below</span>
-        <span class="sub" data-i18n="optAlertBelowSub">The same notice for the downward crossing. Both compare the effective
-          rate — after your off-ramp spread — so the alert matches the figure on the badge. Blank = off.</span></span>
-      <input type="text" id="alertBelow" placeholder="off" data-i18n-ph="popOff" inputmode="decimal">
-    </div>
-  </div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optRakebackPoll">Refresh it every minute</span>
+            <span class="sub" data-i18n="optRakebackPollSub">Repeats one of the site's own requests while the tab is open and
+              focused, instead of waiting for the app to ask. This is automated traffic to the casino's account API from your
+              session — their terms and their bot handling are theirs, and an account flag is the risk you would be taking.
+              Off unless you want it.</span></span>
+          <label class="switch"><input type="checkbox" id="rakebackPoll"><span></span></label>
+        </div>
+      </div>
+    </section>
 
-  <h2 data-i18n="optStake">Casino account</h2>
+    <!-- ------------------------------------------------- session and limits -->
+    <section class="page" id="session">
+      <header class="page-head">
+        <h1 data-i18n="navSession">Session &amp; limits</h1>
+        <p class="hint" data-i18n="optHistoryIntro">Sessions are filed automatically once they go quiet, and whenever you reset one.
+          Each is recorded with the rate that applied when it closed, so an old session keeps
+          the figure it actually had rather than being restated at today's rate. The coin's dollar price and the
+          exchange-rate table are stored alongside it, so the same session can be read in a currency you pick later —
+          still at that evening's rates.</p>
+      </header>
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optRakeback">Read rakeback and VIP progress</span>
-        <span class="sub" data-i18n="optRakebackSub">Reads the account data the casino's own app already fetches, and shows
-          the rakeback balance converted — VIP progress on Stake, your level on Duel. Watching only: it adds no requests
-          of its own until you ask it to, with the refresh button or the poll below.</span></span>
-      <label class="switch"><input type="checkbox" id="trackRakeback"><span></span></label>
-    </div>
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optIdle">End a session after</span>
+            <span class="sub" data-i18n="optIdleSub">Minutes without a bet before the session is considered finished.</span></span>
+          <input type="number" id="sessionIdleMinutes" min="1" max="1440" step="1">
+        </div>
+      </div>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optRakebackPoll">Refresh it every minute</span>
-        <span class="sub" data-i18n="optRakebackPollSub">Repeats one of the site's own requests while the tab is open and
-          focused, instead of waiting for the app to ask. This is automated traffic to the casino's account API from your
-          session — their terms and their bot handling are theirs, and an account flag is the risk you would be taking.
-          Off unless you want it.</span></span>
-      <label class="switch"><input type="checkbox" id="rakebackPoll"><span></span></label>
-    </div>
-  </div>
+      <h2 data-i18n="optLimits">Limits</h2>
+      <p class="hint" data-i18n="optLimitsIntro">Each one flags in the overlay and, if you want, as a desktop notice. Nothing is
+        blocked and no bet is stopped — these report, and the reading is yours.</p>
 
-  <div id="currentBets" hidden>
-    <p class="hint" data-i18n="optCurrentBets">Bets counted into the session running now — check these against Stake's own
-      list if a total ever looks wrong.</p>
-    <div class="table-scroll"><table id="betLogTable"></table></div>
-  </div>
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="label" id="optLimWagerLabel">Wager limit</span>
+            <span class="sub" data-i18n="optLimWagerSub">Flags in the overlay once this session's turnover passes it. Blank = off.</span></span>
+          <input type="text" id="limitWager" placeholder="off" data-i18n-ph="popOff" inputmode="decimal">
+        </div>
 
-  <div id="historyTotals" class="totals"></div>
-  <div id="historyWrap" class="table-scroll"><table id="historyTable"></table></div>
+        <div class="row">
+          <span class="grow"><span class="label" id="optLimLossLabel">Loss limit</span>
+            <span class="sub" data-i18n="optLimLossSub">Flags once the session is down by this much. Blank = off.</span></span>
+          <input type="text" id="limitLoss" placeholder="off" data-i18n-ph="popOff" inputmode="decimal">
+        </div>
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="sub" id="historyCount">No sessions recorded yet.</span></span>
-      <button class="ghost" id="exportBets" data-i18n="optExportBets">Export bets</button>
-      <button class="ghost" id="exportHistory" data-i18n="optExportSessions">Export sessions</button>
-      <button class="ghost" id="clearHistory" data-i18n="optClearHistory">Clear history</button>
-    </div>
-  </div>
+        <div class="row">
+          <span class="grow"><span class="label" id="optLimWinLabel">Win limit</span>
+            <span class="sub" data-i18n="optLimWinSub">Flags once the session is up by this much — a take-profit marker. All three
+              are in the currency you convert to, compared at the current rate. They can also be set straight from the
+              toolbar popup.</span></span>
+          <input type="text" id="limitWin" placeholder="off" data-i18n-ph="popOff" inputmode="decimal">
+        </div>
 
-  <h2 data-i18n="optCost">What it costs</h2>
-  <p class="hint" data-i18n="optCostIntro">Every game takes a fixed cut of what you stake, and rakeback hands a fraction
-    of that cut back. Neither figure is shown anywhere on the casino — Stake displays a rakeback balance, not what it is
-    a fraction of. Rakeback is a discount on losing, not a way of winning: because it is a percentage of the house edge,
-    it returns the same share of your expected loss whatever you play, so it cannot make one game better than another.
-    A higher-edge game pays more rakeback because it is taking more.</p>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optLimTime">Time limit (minutes)</span>
+            <span class="sub" data-i18n="optLimTimeSub">Flags once the session has been running this long. Counted from its first
+              bet, not from opening the tab, and it needs no rate — so it applies to every coin. Blank = off.</span></span>
+          <input type="text" id="limitMinutes" placeholder="off" data-i18n-ph="popOff" inputmode="numeric">
+        </div>
+      </div>
+    </section>
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optEdge">House edge %</span>
-        <span class="sub" data-i18n="optEdgeSub">The cut the games you play take. Stake's own originals — dice, limbo,
-          mines and the rest — are 99% RTP, so 1%. Slots are usually higher and vary per title; a slot's RTP is on its
-          own info panel. One figure stands in for every game for now.</span></span>
-      <input type="text" id="houseEdgePercent" inputmode="decimal">
-    </div>
+    <!-- ------------------------------------------------------------- alerts -->
+    <section class="page" id="alerts">
+      <header class="page-head">
+        <h1 data-i18n="optAlerts">Alerts</h1>
+        <p class="hint" data-i18n="navAlertsSub">Everything that speaks up without you looking at it. All of it is off-switchable,
+          and none of it blocks anything.</p>
+      </header>
 
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optRakeback">Rakeback % of the edge</span>
-        <span class="sub" data-i18n="optRakebackSub">Stake's help centre says 3.5% of the house edge; some third-party
-          calculators say 5%. Only used until the extension has watched enough rakeback actually arrive, at which point
-          it reports the rate you are really being paid instead.</span></span>
-      <input type="text" id="rakebackPercent" inputmode="decimal">
-    </div>
-  </div>
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optBadge">Toolbar badge</span>
+            <span class="sub" data-i18n="optBadgeSub">Session P/L in your currency on the extension icon while a session is running,
+              the rate when one is not. Green up, red down.</span></span>
+          <label class="switch"><input type="checkbox" id="showBadge"><span></span></label>
+        </div>
 
-  <div id="costWrap" hidden></div>
-  <p class="hint" id="costNote"></p>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optNotify">Notify when a limit is crossed</span>
+            <span class="sub" data-i18n="optNotifySub">A desktop notice, once per limit per session. The overlay only reaches you
+              when Stake is the tab you are looking at.</span></span>
+          <label class="switch"><input type="checkbox" id="notifyLimits"><span></span></label>
+        </div>
 
-  <h2 data-i18n="optGames">By game</h2>
-  <p class="hint" id="gameNote"></p>
-  <div id="gameWrap" hidden></div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optChasing">Say when stakes climb while losing</span>
+            <span class="sub" data-i18n="optChasingSub">One notice per session, if the stakes get to around three times what the
+              session opened with while it is down. Raising stakes to win back losses is hard to notice from the inside,
+              because each raise on its own looks reasonable. It reports the figures and nothing else — no advice, and
+              nothing is blocked.</span></span>
+          <label class="switch"><input type="checkbox" id="notifyChasing"><span></span></label>
+        </div>
+      </div>
 
-  <h2 data-i18n="optGraph">Profit and loss</h2>
-  <p class="hint" data-i18n="optGraphIntro">Where you stood when the session opened is the line across the middle.
-    Green above it is profit, red below it is loss, and each step is one bet. Archived sessions keep a thinned
-    copy of the curve; anything recorded before this existed has none.</p>
+      <h2 data-i18n="optRateAlerts">Rate alerts</h2>
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="sub" id="chartNote"></span></span>
-      <select id="chartPick"></select>
-    </div>
-  </div>
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="label" id="optAlertAboveLabel">Alert when the rate rises above</span>
+            <span class="sub" data-i18n="optAlertAboveSub">A desktop notice when the effective USDT rate crosses this line upward.
+              Fires on the crossing, once — not again until the rate has dipped back under. Blank = off.</span></span>
+          <input type="text" id="alertAbove" placeholder="off" data-i18n-ph="popOff" inputmode="decimal">
+        </div>
 
-  <div class="chart-wrap" id="chartWrap">
-    <div class="chart-head">
-      <span class="chart-value" id="chartValue">—</span>
-      <span class="chart-range" id="chartRange"></span>
-    </div>
-    <svg class="chart" id="chart" viewBox="0 0 600 200" preserveAspectRatio="none" aria-hidden="true"></svg>
-    <div class="chart-foot">
-      <span id="chartLow"></span>
-      <span id="chartBase"></span>
-      <span id="chartHigh"></span>
-    </div>
-  </div>
+        <div class="row">
+          <span class="grow"><span class="label" id="optAlertBelowLabel">Alert when the rate falls below</span>
+            <span class="sub" data-i18n="optAlertBelowSub">The same notice for the downward crossing. Both compare the effective
+              rate — after your off-ramp spread — so the alert matches the figure on the badge. Blank = off.</span></span>
+          <input type="text" id="alertBelow" placeholder="off" data-i18n-ph="popOff" inputmode="decimal">
+        </div>
+      </div>
+    </section>
 
-  <h2 data-i18n="optByYear">By year</h2>
-  <p class="hint" data-i18n="optByYearIntro">Every session totalled at the rate it closed with, grouped by calendar
-    year by default. Sessions recorded before a rate was ever fetched have no converted
-    figure and are counted separately rather than silently left out.</p>
+    <!-- ---------------------------------------------------------- overlay -->
+    <section class="page" id="overlay">
+      <header class="page-head">
+        <h1 data-i18n="optOverlay">Streamer overlay</h1>
+        <p class="hint" data-i18n="optOverlayIntro">A separate window showing the live session, large, on a flat colour.
+          Capture it in OBS as a <b>Window Capture</b> and add a <b>Chroma Key</b> filter on the background colour.
+          (OBS's Browser Source runs its own browser and cannot open an extension page, which is why this is a window
+          rather than a URL, and why the background is a colour rather than transparent.)
+          It reads the same session everything else does — no request, no new permission, and it writes nothing.</p>
+        <p class="hint warn" data-i18n="optOverlayCare">This one is broadcast. Everything ticked below goes on screen in
+          front of whoever is watching, so it is a list you tick rather than one you untick.</p>
+      </header>
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optFiscal">Tax year starts in</span>
-        <span class="sub" data-i18n="optFiscalSub">January is the calendar year, which is Israel's tax year. The UK's opens in
-          April and Australia's in July. This changes only how sessions are grouped below — no figure is recalculated.</span></span>
-      <select id="fiscalYearStart"></select>
-    </div>
-  </div>
+      <div class="group">
+        <div class="row stack">
+          <span class="grow"><span class="label" data-i18n="optOverlayFields">Show, and what to call it</span>
+            <span class="sub" data-i18n="optOverlayFieldsSub">Tick what goes on screen. The name beside each one is yours to
+              write — leave it blank for the default. An overlay is read by an audience whose language this has no way of
+              knowing, so the words are yours rather than a translation's. A figure with nothing to report yet — a best
+              multiplier before anything has paid — is left out rather than shown as a dash.</span></span>
+          <div class="fields" id="overlayFields"></div>
+        </div>
 
-  <div id="yearWrap" class="table-scroll"><table id="yearTable"></table></div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optOverlayLayout">Layout</span>
+            <span class="sub" data-i18n="optOverlayLayoutSub">A row for a strip along the edge of a scene, a stack for a corner.</span></span>
+          <select id="overlayLayout">
+            <option value="bar" data-i18n="optOverlayBar">Row</option>
+            <option value="block" data-i18n="optOverlayBlock">Stack</option>
+          </select>
+        </div>
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="sub" id="yearNote"></span></span>
-      <button class="ghost" id="exportYears" data-i18n="optExportYears">Export years</button>
-    </div>
-  </div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optOverlaySize">Text size</span>
+            <span class="sub" data-i18n="optOverlaySizeSub">Pixels, 12 to 160. Everything else scales with it.</span></span>
+          <input type="number" id="overlaySize" min="12" max="160" step="2">
+        </div>
 
-  <h2 data-i18n="optDiagnostics">Diagnostics</h2>
-  <p class="hint" data-i18n="optDiagnosticsIntro">Failures inside the page are reported here. Empty is what you want to see —
-    if the overlay ever goes quiet or shows stale numbers, this is the first place to look.</p>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optOverlayColour">Colours</span>
+            <span class="sub" data-i18n="optOverlayColourSub">Text, then the background to key out. Profit stays green and
+              loss stays red whatever you pick — that is what a glance at the overlay is reading.</span></span>
+          <span class="colours">
+            <input type="color" id="overlayColor">
+            <input type="color" id="overlayBackground">
+          </span>
+        </div>
 
-  <div id="diagnostics" class="diag-list"></div>
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="sub" id="diagCount">No problems reported.</span></span>
-      <button class="ghost" id="clearDiagnostics" data-i18n="optClear">Clear</button>
-    </div>
-  </div>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optOverlayCoin">Show coin amounts too</span>
+            <span class="sub" data-i18n="optOverlayCoinSub">The figure in coin beneath the converted one.</span></span>
+          <label class="switch"><input type="checkbox" id="overlayCoin"><span></span></label>
+        </div>
 
-  <h2 data-i18n="optPinned">Pinned amount</h2>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optOverlayOpen">Overlay window</span>
+            <span class="sub" id="overlayHint" data-i18n="optOverlayOpenSub">Opens now, and updates itself as you play. Close it to stop broadcasting.</span></span>
+          <button id="openOverlay" data-i18n="optOverlayOpenBtn">Open</button>
+        </div>
+      </div>
+    </section>
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="label" id="pinnedLabel" data-i18n="optNothingPinned">Nothing pinned</span>
-        <span class="sub" id="pinnedSelector" data-i18n="optPinnedSub">Use “Pin an amount on the page” in the overlay on Stake.</span></span>
-      <button class="ghost" id="clearPin" data-i18n="optClear">Clear</button>
-    </div>
-  </div>
+    <!-- ----------------------------------------------------------- reports -->
+    <section class="page" id="reports">
+      <header class="page-head">
+        <h1 data-i18n="navReports">Reports</h1>
+        <p class="hint" data-i18n="navReportsSub">Everything recorded so far, read back. Nothing here is a tax document — the
+          site's own records are the authoritative ones, and where these figures are a floor rather than a total, they say so.</p>
+      </header>
 
-  <h2 data-i18n="optMirrors">Sites</h2>
-  <p class="hint" id="sitesSupported"></p>
-  <p class="hint" data-i18n="optMirrorsIntro">The extension runs only on the domains listed here and nowhere else. That
-    is a limit on purpose: what it knows about a casino is a set of assumptions about that one site's bet ledger, and
-    pointing them at a site they were not written for does not fail — it produces confident wrong numbers. Support for
-    a new casino is a new version, not a setting.</p>
+      <div id="currentBets" hidden>
+        <p class="hint" data-i18n="optCurrentBets">Bets counted into the session running now — check these against Stake's own
+          list if a total ever looks wrong.</p>
+        <div class="table-scroll"><table id="betLogTable"></table></div>
+      </div>
 
-  <div id="mirrorAdd" class="group" hidden>
-    <div class="row">
-      <span class="grow"><span class="label" data-i18n="optMirrorMore">Also run on</span>
-        <span class="sub" data-i18n="optMirrorMoreSub">Extra domains these casinos answer on, switched off until you
-          pick one. Chrome asks to allow access; you can withdraw it at any time from Chrome's own extension
-          settings.</span></span>
-      <select id="mirrorHost"></select>
-      <button id="addMirror" data-i18n="optMirrorAdd">Add</button>
-    </div>
-  </div>
-  <div id="mirrorList" class="group" hidden></div>
-  <p class="hint" id="mirrorMsg"></p>
+      <div id="historyTotals" class="totals"></div>
+      <div id="historyWrap" class="table-scroll"><table id="historyTable"></table></div>
 
-  <h2 data-i18n="optBackup">Backup</h2>
-  <p class="hint" data-i18n="optBackupIntro">Everything lives on this machine, so uninstalling the extension deletes the
-    history with it. The backup is one JSON file — settings and recorded sessions, no API key. Importing merges:
-    existing sessions are kept and duplicates are skipped, so restoring an old file never deletes a newer session.</p>
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="sub" id="historyCount">No sessions recorded yet.</span></span>
+          <button class="ghost" id="exportBets" data-i18n="optExportBets">Export bets</button>
+          <button class="ghost" id="exportHistory" data-i18n="optExportSessions">Export sessions</button>
+          <button class="ghost" id="clearHistory" data-i18n="optClearHistory">Clear history</button>
+        </div>
+      </div>
 
-  <div class="group">
-    <div class="row">
-      <span class="grow"><span class="sub" id="backupNote"></span></span>
-      <button class="ghost" id="exportBackup" data-i18n="optExportBackup">Export backup</button>
-      <button class="ghost" id="importBackup" data-i18n="optImportBackup">Import backup</button>
-      <input type="file" id="importFile" accept=".json,application/json" hidden>
-    </div>
-  </div>
+      <h2 data-i18n="optCost">What it costs</h2>
+      <p class="hint" data-i18n="optCostIntro">Every game takes a fixed cut of what you stake, and rakeback hands a fraction
+        of that cut back. Neither figure is shown anywhere on the casino — Stake displays a rakeback balance, not what it is
+        a fraction of. Rakeback is a discount on losing, not a way of winning: because it is a percentage of the house edge,
+        it returns the same share of your expected loss whatever you play, so it cannot make one game better than another.
+        A higher-edge game pays more rakeback because it is taking more.</p>
 
-  <button class="wide" id="reset" data-i18n="optResetAll">Reset everything to defaults</button>
-  <p class="hint" id="status"></p>
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optEdge">House edge %</span>
+            <span class="sub" data-i18n="optEdgeSub">The cut the games you play take. Stake's own originals — dice, limbo,
+              mines and the rest — are 99% RTP, so 1%. Slots are usually higher and vary per title; a slot's RTP is on its
+              own info panel. One figure stands in for every game for now.</span></span>
+          <input type="text" id="houseEdgePercent" inputmode="decimal">
+        </div>
 
-  <!-- Attribution, which both providers' free tiers require, and which is
-       simply true: neither of these numbers is ours. The licence is here
-       because "as is, no warranty" belongs where the software is configured,
-       not only in a file nobody opens. -->
-  <p class="credit">
-    <span data-i18n="creditPrices">Prices by</span>
-    <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a> ·
-    <span data-i18n="creditRates">exchange rates by</span>
-    <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">exchangerate-api.com</a>
-    <br>
-    <span data-i18n="creditLicence">MIT licensed, and provided as is with no warranty. It reports; it does not
-      intervene, and nothing here is tax or financial advice.</span>
-  </p>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optRakeback">Rakeback % of the edge</span>
+            <span class="sub" data-i18n="optRakebackSub">Stake's help centre says 3.5% of the house edge; some third-party
+              calculators say 5%. Only used until the extension has watched enough rakeback actually arrive, at which point
+              it reports the rate you are really being paid instead.</span></span>
+          <input type="text" id="rakebackPercent" inputmode="decimal">
+        </div>
+      </div>
 
-  <script type="module" src="options.js"></script>
+      <div id="costWrap" hidden></div>
+      <p class="hint" id="costNote"></p>
+
+      <h2 data-i18n="optGames">By game</h2>
+      <p class="hint" id="gameNote"></p>
+      <div id="gameWrap" hidden></div>
+
+      <h2 data-i18n="optGraph">Profit and loss</h2>
+      <p class="hint" data-i18n="optGraphIntro">Where you stood when the session opened is the line across the middle.
+        Green above it is profit, red below it is loss, and each step is one bet. Archived sessions keep a thinned
+        copy of the curve; anything recorded before this existed has none.</p>
+
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="sub" id="chartNote"></span></span>
+          <select id="chartPick"></select>
+        </div>
+      </div>
+
+      <div class="chart-wrap" id="chartWrap">
+        <div class="chart-head">
+          <span class="chart-value" id="chartValue">—</span>
+          <span class="chart-range" id="chartRange"></span>
+        </div>
+        <svg class="chart" id="chart" viewBox="0 0 600 200" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div class="chart-foot">
+          <span id="chartLow"></span>
+          <span id="chartBase"></span>
+          <span id="chartHigh"></span>
+        </div>
+      </div>
+
+      <h2 data-i18n="optByYear">By year</h2>
+      <p class="hint" data-i18n="optByYearIntro">Every session totalled at the rate it closed with, grouped by calendar
+        year by default. Sessions recorded before a rate was ever fetched have no converted
+        figure and are counted separately rather than silently left out.</p>
+
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optFiscal">Tax year starts in</span>
+            <span class="sub" data-i18n="optFiscalSub">January is the calendar year, which is Israel's tax year. The UK's opens in
+              April and Australia's in July. This changes only how sessions are grouped below — no figure is recalculated.</span></span>
+          <select id="fiscalYearStart"></select>
+        </div>
+      </div>
+
+      <div id="yearWrap" class="table-scroll"><table id="yearTable"></table></div>
+
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="sub" id="yearNote"></span></span>
+          <button class="ghost" id="exportYears" data-i18n="optExportYears">Export years</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------- sites -->
+    <section class="page" id="sites">
+      <header class="page-head">
+        <h1 data-i18n="optMirrors">Sites</h1>
+        <p class="hint" id="sitesSupported"></p>
+        <p class="hint" data-i18n="optMirrorsIntro">The extension runs only on the domains listed here and nowhere else. That
+          is a limit on purpose: what it knows about a casino is a set of assumptions about that one site's bet ledger, and
+          pointing them at a site they were not written for does not fail — it produces confident wrong numbers. Support for
+          a new casino is a new version, not a setting.</p>
+      </header>
+
+      <div id="mirrorAdd" class="group" hidden>
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optMirrorMore">Also run on</span>
+            <span class="sub" data-i18n="optMirrorMoreSub">Extra domains these casinos answer on, switched off until you
+              pick one. Chrome asks to allow access; you can withdraw it at any time from Chrome's own extension
+              settings.</span></span>
+          <select id="mirrorHost"></select>
+          <button id="addMirror" data-i18n="optMirrorAdd">Add</button>
+        </div>
+      </div>
+      <div id="mirrorList" class="group" hidden></div>
+      <p class="hint" id="mirrorMsg"></p>
+    </section>
+
+    <!-- -------------------------------------------------------------- data -->
+    <section class="page" id="data">
+      <header class="page-head">
+        <h1 data-i18n="navData">Backup &amp; data</h1>
+        <p class="hint" data-i18n="optBackupIntro">Everything lives on this machine, so uninstalling the extension deletes the
+          history with it. The backup is one JSON file — settings and recorded sessions, no API key. Importing merges:
+          existing sessions are kept and duplicates are skipped, so restoring an old file never deletes a newer session.</p>
+      </header>
+
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="sub" id="backupNote"></span></span>
+          <button class="ghost" id="exportBackup" data-i18n="optExportBackup">Export backup</button>
+          <button class="ghost" id="importBackup" data-i18n="optImportBackup">Import backup</button>
+          <input type="file" id="importFile" accept=".json,application/json" hidden>
+        </div>
+      </div>
+
+      <h2 data-i18n="optDiagnostics">Diagnostics</h2>
+      <p class="hint" data-i18n="optDiagnosticsIntro">Failures inside the page are reported here. Empty is what you want to see —
+        if the overlay ever goes quiet or shows stale numbers, this is the first place to look.</p>
+
+      <div id="diagnostics" class="diag-list"></div>
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="sub" id="diagCount">No problems reported.</span></span>
+          <button class="ghost" id="clearDiagnostics" data-i18n="optClear">Clear</button>
+        </div>
+      </div>
+
+      <h2 data-i18n="optDanger">Start again</h2>
+
+      <button class="wide" id="reset" data-i18n="optResetAll">Reset everything to defaults</button>
+    </section>
+
+  </main>
+</div>
+
+<!-- Fixed rather than in the flow: "Saved." at the foot of a page this long was
+     a confirmation nobody could see. Empty means invisible, which is a CSS
+     rule here rather than a second piece of state in the script. -->
+<p class="toast" id="status" role="status" aria-live="polite"></p>
+
+<script type="module" src="options.js"></script>
 </body>
 </html>

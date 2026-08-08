@@ -24,6 +24,7 @@ talking REST, and Duel has no bet table at all.
 | Price table | `currencyConfiguration`, seen going past | `/api/v2/metadata/exchange-rates`, read once a minute while the tab is in front of you |
 | Rakeback | `VipMeta`, seen going past | `/api/v2/user/rakeback`, seen going past |
 | VIP | tier plus fractional progress to the next | level number (no progress: the xp curve is not published) |
+| Wallet balance | the figure on the page, with `UserBalances` behind it | the figure on the page |
 | Wallet coin | read off the currency chip in the header | read off the ledger rows — Duel's header says `$` whatever it holds |
 | Credentials touched | the page's own `authorization` header, kept in the page | none — Duel's session is a cookie the browser attaches itself |
 
@@ -43,22 +44,48 @@ curve, and the four session limits, editable in place. Works everywhere, not jus
 the rate when one is not. Green up, red down, exact figure in the tooltip. Turn it off in
 Options → *Alerts* if you would rather the icon stayed quiet.
 
+**A streamer overlay** — a separate window with the live session, large, on a flat colour.
+Options → *Streamer overlay*, then capture it in OBS as a **Window Capture** with a **Chroma
+Key** filter on the background. It is a window rather than a URL because OBS's Browser Source
+runs its own browser and cannot open an extension page; the background is a colour rather than
+transparent because window capture composites against the browser's own opaque backdrop, so a
+page with no background of its own is captured as white.
+
+**The labels are yours to write.** Every field has a text box beside its tick, and whatever you
+type is what goes on screen — any language, any script, or something that is not a translation
+of anything. Leave one blank and it falls back to the default. This is the one surface where the
+extension does not choose the words, because an overlay is read by an audience whose language it
+has no way of knowing.
+
+Six figures to choose from, a row or a stack, one text size and two colours. Only P/L and
+turnover are on by default and the rest are ticked one at a time — this is the one surface whose
+audience is not the person playing, and a bet count and a win rate say more about somebody than
+they may have meant to put on screen. Profit stays green and loss stays red whatever colours you
+pick, because that is what a glance at a stream is reading.
+
 **The floating readout** on the casino — the live rate, plus one amount of your choosing pinned
 to it. Drag it by its header; it remembers where you put it.
 
-**Pin an amount.** Click *Pin an amount on the page*, then click your balance. It is tracked
-from then on and converted once a second. This exists because both sites' markup is generated
-and their class names change between deploys — rather than ship selectors that break on their
-next release, you point at the number once and the extension remembers where it was.
+**Your balance is followed automatically.** The readout tracks each site's own balance chip
+without being told to — `coin-toggle` on Stake, `currency-value` on Duel. Those are
+`data-testid` hooks both sites keep stable across deploys, while the markup underneath them is
+regenerated every time the balance changes, which is exactly why the chip is the thing worth
+following and the digits are not.
 
-You can click the balance chip itself — the whole button, not the digits. The number is
-re-found underneath whatever you pinned on every read, so pinning the outer chip is actually
-the sturdier choice: both sites' chips carry a stable `data-testid` (`coin-toggle` on Stake,
-`currency-value` on Duel), while their innards are re-rendered every time the balance changes.
+**Pin an amount** only when you want a *different* number. Click *Pin an amount on the page*,
+then click it; it is converted once a second from then on. Pins are remembered **per site**, so
+one made on Stake is not carried to Duel and found missing there.
 
-If the pinned element stops resolving (both sites re-render whole subtrees when you navigate),
-the readout says *element not on this page* instead of freezing a stale figure. Re-pin in two
-clicks.
+Three things are tried in order on every read — this site's pin, the single pin from before pins
+were per site, then the balance chip — and the first that actually resolves is used. "First that
+resolves" rather than "first that is set" is what stops a pin ever needing to be made again:
+both sites re-render whole subtrees when you navigate, so a stored path can quietly stop
+matching, and the readout falls back to the chip instead of asking you to point at it again. The
+order lives in `pinCandidates` in `lib/scrape.js`, where it is a pure function with tests on it,
+rather than in the content script where only half of it could be exercised.
+
+Only if none of the three resolves does the readout say *element not on this page*, rather than
+freezing a stale figure.
 
 **Currency is detected, not assumed.** Stake tags its currency chip (`data-ds-icon="USDT"`), so
 the readout names the coin it found — and it is priced in its own right. Duel's header renders
@@ -125,6 +152,21 @@ time.
 | P/L | `Σ gross return − Σ stake` |
 | Wagered | `Σ stake` |
 | Bets, W/L | row count; a win is any positive payout |
+| Won % | `wins / bets` |
+| Best | `max(gross return / stake)`, with the game it happened in |
+
+**The best multiplier is derived, not read.** Stake's table has a multiplier column and its game
+replies carry `payoutMultiplier`, so there was a reading to be had for free. Three readers feed
+the accounting and only one of them publishes a multiplier at all — a figure taken from a fourth
+place would be a fourth place for them to disagree. Gross over stake *is* the definition of the
+number, so the one computed here can never contradict the turnover and returns beside it. A bet
+with no stake on it sets no record: a free spin returning anything divides by zero.
+
+**Won % carries no minimum sample, and realized RTP does.** That is not an inconsistency. RTP
+estimates something unobservable — what the games pay in the long run — so over forty bets it is
+variance wearing a percent sign and reads as a verdict, which is why it stays blank below 200
+bets. Won % is a count divided by a count: six of ten is exactly six of ten. It describes the
+session rather than the games, so it is reported from the first bet.
 
 **The Payout column is not one quantity, and this cost a bug.** On a win it holds the gross
 amount credited back (stake × multiplier). On a *loss* it holds the amount debited, written
@@ -426,6 +468,22 @@ and the tier is shown on its own rather than beside an invented one. Duel's rake
 a single dollar total; it is labelled USD and priced with the dollar rate, which is what Duel's
 own display means by it.
 
+**On Stake this also reads your wallet.** `UserBalances` is a third operation on the same
+endpoint, and it answers with `available` and `vault` for every currency Stake supports — 174 of
+them in the reply this was built against, of which exactly one was non-zero. Only `available` is
+taken: `vault` is money set aside that cannot be bet from, and adding it in would make the wallet
+disagree with the bet ledger by precisely the amount put away. Only non-zero balances are
+forwarded, which is safe because the reply is exhaustive — a coin missing from the short list is
+a coin holding nothing, not a coin nobody asked about. That is a 54-byte message instead of a
+27 KB one, on a bus every script on the page can read.
+
+**It does not replace the figure on screen, and that is deliberate.** The API number is exact and
+covers every coin at once, but it arrives only when Stake's app happens to ask — a whole-wallet
+query, not something re-run per bet — while the number on the page updates the moment a bet
+settles. For a figure whose whole job is to be compared against a bet ledger as it grows, fresh
+beats exact. So it fills the gap the page reading leaves rather than overriding it: it is what
+lets the readout show a balance when the balance chip is not on the page at all.
+
 **How it reads them.** On Stake the endpoint is authenticated by headers the app attaches itself
 — an access token, not just a cookie — and those exist only inside the page. So a small script
 runs in the page's own JavaScript world and wraps `fetch`. That is also why the token never goes
@@ -681,13 +739,21 @@ Regenerates `icons/*.png`. They are drawn in code rather than committed as opaqu
 manifest.json
 LICENSE            MIT, with the warranty disclaimer the limits lean on
 _locales/
-  en, he             UI strings; every call carries its English as a fallback
+  en                 UI strings; every call carries its English as a fallback.
+                     One folder per shipped language, and `TRANSLATIONS` in
+                     lib/i18n.js has to name the same set — a language claimed
+                     with no bundle behind it is what Intl then names currencies
+                     and months in
 src/
   background.js      service worker: the only thing that touches the network
   content.js         the overlay; standalone, since content scripts are not modules
   popup.html/.js     rate + calculator
-  options.html/.js   settings
+  options.html/.js   settings, reports and history — eight panes behind a
+                     sidebar, with the URL fragment deciding which one shows
+  overlay.html/.js   the streamer overlay window
   ui.css             shared by popup and options
+  overlay.css        the overlay's own; shares nothing with ui.css, because
+                     every panel and border in there would be captured too
   lib/
     rates.js         provider chain, and the casinos' own price tables
     format.js        parsing, Intl money formatting, spread

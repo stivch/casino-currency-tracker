@@ -214,6 +214,25 @@
     });
   }
 
+  /** A payout multiplier. Third copy of lib/format.js's rule; see there. */
+  function formatMultiplier(value) {
+    if (!Number.isFinite(value) || value < 0) return '—';
+    return `${formatNum(value, value < 100 ? 2 : 0)}×`;
+  }
+
+  /**
+   * Text made safe to put inside an innerHTML template.
+   *
+   * Load-bearing here in a way it is not on the extension's own pages: this
+   * script runs *on the casino*, and the game name it renders was read out of
+   * the casino's own markup moments earlier. Without this, a game called
+   * `<img onerror=…>` would be handed straight back to the DOM.
+   */
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
   /** The rate to multiply by: manual override and off-ramp spread already applied. */
   function usableRate() {
     return Number.isFinite(rate?.effective) ? rate.effective : null;
@@ -475,6 +494,7 @@
           <div class="sess-row"><span>${t('popWagered', 'Wagered')}</span><b class="sess-wag">—</b></div>
           <div class="limit-bar" data-limit="wager" hidden><i></i></div>
           <div class="sess-row"><span>${t('popBets', 'Bets')}</span><b class="sess-bets">—</b></div>
+          <div class="sess-row sess-best-row" hidden><span>${t('popBest', 'Best')}</span><b class="sess-best">—</b></div>
           <div class="sess-note" hidden></div>
           <div class="limit-alert" hidden></div>
         </div>
@@ -553,13 +573,37 @@
     return t('ageHours', `${hours}h ago`, [String(hours)]);
   }
 
+  /**
+   * What the readout is following, and where that choice came from.
+   *
+   * The order lives in lib/scrape.js, where it is pure and tested. This half is
+   * the part that needs a document: take the first candidate that *resolves*,
+   * not the first that is set — both sites re-render whole subtrees on
+   * navigation, so a stored path can stop matching, and falling through to the
+   * next candidate is what keeps the readout working without being re-pinned.
+   */
+  function resolvePinned() {
+    for (const candidate of globalThis.StakeScrape.pinCandidates(SITE, settings)) {
+      const el = safeQuery(candidate.selector);
+      if (el) return { ...candidate, el };
+    }
+    return { source: null, selector: null, label: null, el: null };
+  }
+
+  /** Has the user chosen something themselves on this site? */
+  const hasManualPin = () =>
+    Boolean(settings?.pins?.[SITE.id]?.selector || settings?.trackedSelector);
+
   function renderTracked() {
     if (!hud) return;
     const empty = hud.querySelector('.track-empty');
     const live = hud.querySelector('.track-live');
 
-    const selector = settings?.trackedSelector;
-    if (!selector) {
+    const pin = resolvePinned();
+
+    // Nothing resolved and nothing was asked for — not even the balance chip is
+    // on this page yet. That is the state the picker exists for.
+    if (!pin.el && !hasManualPin()) {
       empty.hidden = false;
       live.hidden = true;
       return;
@@ -568,15 +612,15 @@
     empty.hidden = true;
     live.hidden = false;
 
-    const el = safeQuery(selector);
+    const el = pin.el;
     const label = hud.querySelector('.track-label');
     const usdt = hud.querySelector('.track-usdt');
     const money = hud.querySelector('.track-money');
 
     if (!el) {
-      // Stake re-renders whole subtrees on navigation, so a pinned selector can
-      // simply stop resolving. Say so rather than freezing a stale number.
-      label.textContent = settings.trackedLabel || t('hudPinnedAmount', 'pinned amount');
+      // A pin was made and neither it nor the balance chip is on the page. Say
+      // so rather than freezing a stale number.
+      label.textContent = pin.label || t('hudPinnedAmount', 'pinned amount');
       usdt.textContent = t('hudNotOnPage', 'element not on this page');
       money.textContent = formatMoney(NaN);
       return;
@@ -585,19 +629,36 @@
     const found = extractAmount(readPinnedText(el), true);
     const currency = detectCurrency(el);
 
+    // The coin it turned out to be beats any stored label, on the same footing
+    // as everywhere else: one of them was read just now and the other was
+    // written down once. With neither, what it is called depends on whether
+    // anybody chose it — "pinned amount" for a thing nobody pinned would be
+    // describing the wrong thing.
     label.textContent = currency
       ? t('hudBalance', `${currency} balance`, [currency])
-      : settings.trackedLabel || t('hudPinnedAmount', 'pinned amount');
+      : pin.label || (pin.source === 'auto'
+        ? t('hudBalanceAuto', 'balance')
+        : t('hudPinnedAmount', 'pinned amount'));
     money.className = 'track-money';
 
-    if (!found) {
+    // The page reading is preferred, and it is worth saying why the *less*
+    // precise source wins. Stake's `UserBalances` reply is exact and covers
+    // every coin at once, but it arrives only when Stake's app happens to ask
+    // for it — a whole-wallet query, not something re-run per bet — while the
+    // figure on screen is updated the moment a bet settles. Between the two,
+    // fresh beats exact for a number whose whole job is to be compared against
+    // a bet ledger as it grows. So the API figure fills the gap the page
+    // reading leaves rather than overriding it.
+    const value = found ? found.value : walletBalance(currency);
+
+    if (value === null) {
       usdt.textContent = t('hudNoNumber', 'no number in element');
       money.textContent = formatMoney(NaN);
       return;
     }
 
-    usdt.textContent = `${formatNum(found.value, Math.min(8, settings.decimals + 2))} ${currency || 'USDT'}`;
-    reportBalance(found.value, currency);
+    usdt.textContent = `${formatNum(value, Math.min(8, settings.decimals + 2))} ${currency || 'USDT'}`;
+    reportBalance(value, currency);
 
     // Only convert what this rate actually prices.
     const coinRate = coinRateFor(currency);
@@ -607,7 +668,26 @@
       return;
     }
 
-    money.textContent = formatMoney(found.value * coinRate);
+    money.textContent = formatMoney(value * coinRate);
+  }
+
+  /**
+   * What Stake says this coin's spendable balance is, or null if it has not
+   * said.
+   *
+   * The list it comes from carries only non-zero balances, and it is built from
+   * a reply that enumerates every currency — so a coin that is absent is a coin
+   * holding nothing, not a coin nobody asked about. That distinction is the
+   * whole reason this returns 0 rather than null for a missing coin once any
+   * reading has arrived: a wallet emptied to exactly zero has to be readable as
+   * zero, or the cross-check would go on comparing against the last figure from
+   * before it was emptied.
+   */
+  function walletBalance(currency) {
+    const balances = stake?.balances;
+    if (!Array.isArray(balances) || !currency) return null;
+    const row = balances.find((entry) => entry.currency === currency);
+    return row ? row.amount : 0;
   }
 
   /**
@@ -700,8 +780,24 @@
     pl.innerHTML = (profit > 0 ? '+' : profit < 0 ? '−' : '') + money(profit);
 
     hud.querySelector('.sess-wag').innerHTML = money(s.wagered);
+
+    // The win rate rides on the bet count rather than earning a row of its own:
+    // it is the same fact as W/L, said as one number instead of two.
+    const rate = s.bets > 0 ? `${Math.round((s.wins / s.bets) * 100)}%` : null;
+    const wl = t('winLoss', `${s.wins}W / ${s.losses}L`, [String(s.wins), String(s.losses)]);
     hud.querySelector('.sess-bets').innerHTML =
-      `${s.bets}<small>${t('winLoss', `${s.wins}W / ${s.losses}L`, [String(s.wins), String(s.losses)])}</small>`;
+      `${s.bets}<small>${wl}${rate ? ` · ${rate}` : ''}</small>`;
+
+    // Only once there is one. A row reading "0.00×" before anything has paid
+    // says the session is losing, which the P/L above it already said better.
+    const bestRow = hud.querySelector('.sess-best-row');
+    const hasBest = Boolean(s.best) && Number.isFinite(s.best.multiplier) && s.best.multiplier > 0;
+    bestRow.hidden = !hasBest;
+    if (hasBest) {
+      const game = escapeHtml(s.best.game);
+      hud.querySelector('.sess-best').innerHTML =
+        formatMultiplier(s.best.multiplier) + (game ? `<small>${game}</small>` : '');
+    }
 
     // Both of these mean the totals are not the whole truth, so they are stated
     // rather than left for the user to discover by disagreeing with Stake.
@@ -1083,9 +1179,16 @@
     // data-testid="coin-toggle"), while its innards get re-rendered on every
     // balance change. The number is re-found underneath it on each read.
     const found = extractAmount(readPinnedText(el), true);
+    // Stored against this casino only. Pinning on Stake used to overwrite what
+    // you had chosen on Duel, because there was one slot for both.
     patch({
-      trackedSelector: cssPath(el),
-      trackedLabel: found ? detectCurrency(el) || 'balance' : 'pinned element',
+      pins: {
+        ...(settings?.pins || {}),
+        [SITE.id]: {
+          selector: cssPath(el),
+          label: found ? detectCurrency(el) || 'balance' : 'pinned element',
+        },
+      },
     });
   }
 
@@ -1265,7 +1368,10 @@
     const chip = document.querySelector(SITE.currencyChip);
     const found = chip ? detectCurrency(chip) : null;
     if (found) return found;
-    const pinned = settings?.trackedSelector ? safeQuery(settings.trackedSelector) : null;
+    // Whatever the readout is following, which may be the chip again — asking
+    // twice costs a query and keeps this from having its own idea of what is
+    // pinned.
+    const pinned = resolvePinned().el;
     return (pinned ? detectCurrency(pinned) : null) || stake?.wallet || null;
   }
 

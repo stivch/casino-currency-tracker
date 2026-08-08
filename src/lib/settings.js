@@ -179,14 +179,131 @@ export const DEFAULTS = {
   // with it.
   mirrors: [],
 
-  // The element pinned by the picker, so the HUD can read a live balance.
+  // What the readout follows on each casino, as {siteId: {selector, label}}.
+  //
+  // Per site, because a pin is a path into one site's markup: a pin made on
+  // Stake and then carried to Duel could only ever fail to resolve, and the
+  // readout said "element not on this page" — which reads as a broken pin
+  // rather than as a pin for somewhere else.
+  //
+  // Empty is the normal state. With nothing here the readout follows the site's
+  // own balance chip, which is the `currencyChip` selector each adapter already
+  // carries for reading the wallet coin: a `data-testid` both sites keep stable
+  // across deploys, unlike the generated class names underneath it. Pinning is
+  // now for choosing something *else*, not for making the thing work.
+  pins: {},
+
+  // The single global pin this replaced. Nothing writes it any more; it is read
+  // as a fallback so that anyone who pinned before pins were per site keeps
+  // what they had until they pin again.
   trackedSelector: '',
   trackedLabel: '',
 
   // Where the user dragged the HUD to, in px from the bottom-right.
   hudRight: 16,
   hudBottom: 16,
+
+  // ------------------------------------------------------- streamer overlay
+  //
+  // A separate window, sized and coloured for broadcast software to capture.
+  // It reads the same session state everything else does and shows a chosen
+  // subset of it — no new data, no new permission, no request.
+  //
+  // Nothing here is broadcast until the window is deliberately opened, which
+  // is the reason the field list can afford a default at all: the cost of a
+  // field being on is paid only by somebody who has already decided to put
+  // their session on screen.
+
+  // Which figures the overlay shows, from OVERLAY_FIELDS below.
+  //
+  // P/L and turnover only. The rest are opt-in one at a time because this is
+  // the one surface whose audience is not the person playing — a bet count and
+  // a win rate say more about somebody than they may have meant to say, and a
+  // layout that shipped with everything on would say it before they looked.
+  overlayFields: ['pl', 'wagered'],
+
+  // What each field is called on the overlay, as {fieldId: text}. Anything not
+  // named here falls back to the translated label.
+  //
+  // This is the one place in the extension where the user writes the words
+  // rather than choosing a language, and it is the right place for it: an
+  // overlay is read by an audience, and which language that audience speaks is
+  // not a thing the extension can know. It also covers the case a translation
+  // never will — a streamer who wants "PROFIT" where the popup says "P/L", or
+  // their own handle in place of a label.
+  overlayLabels: {},
+
+  // 'bar' lays the figures out in a row, for a strip along the top or bottom
+  // of a scene. 'block' stacks them, for a corner panel.
+  overlayLayout: 'bar',
+
+  // Text height in px. Broadcast is watched at a distance and downscaled, so
+  // this runs a long way past anything the popup would need.
+  overlaySize: 40,
+
+  overlayColor: '#ffffff',
+
+  // Solid rather than transparent, and that is a limitation being handled
+  // rather than a preference. Window capture composites against the browser's
+  // own opaque backdrop, so a page with no background is captured as white —
+  // the way to get a clean cut-out is a flat colour the streamer keys out.
+  // Broadcast green by default; anyone who only wants a tidy panel on a second
+  // monitor can set it to something dark and key nothing.
+  overlayBackground: '#00b140',
+
+  // Show the coin figure beside the converted one. On, because a casino
+  // stream's audience is watching a balance denominated in coin.
+  overlayCoin: true,
 };
+
+/**
+ * What the streamer overlay can show.
+ *
+ * Ordered as they are laid out. `id` is what is stored, so renaming one is a
+ * migration; the label is looked up at render time and can change freely.
+ */
+export const OVERLAY_FIELDS = [
+  { id: 'pl', key: 'popPl', label: 'P/L' },
+  { id: 'wagered', key: 'popWagered', label: 'Wagered' },
+  { id: 'bets', key: 'popBets', label: 'Bets' },
+  { id: 'winrate', key: 'ovWinRate', label: 'Won' },
+  { id: 'best', key: 'popBest', label: 'Best' },
+  { id: 'duration', key: 'labelTime', label: 'Time' },
+];
+
+export const OVERLAY_LAYOUTS = ['bar', 'block'];
+
+/**
+ * How big the overlay window has to be to hold what was ticked.
+ *
+ * Both dimensions are multiples of the text height, because that is the only
+ * thing deciding how much room a figure needs — but the long axis also scales
+ * with the *number* of fields, which the first version of this did not. Six
+ * fields in a window sized for two wrapped onto a second row and were clipped
+ * top and bottom, which on a stream is a figure cut in half rather than a
+ * layout that looks slightly off.
+ *
+ * The per-field constants are measured, not guessed: six fields at 40px with
+ * coin amounts showing lay out in 938×75 — 3.9 text-heights wide per field and
+ * 1.9 tall. Both are rounded up from there, because the figures that were
+ * measured are not the longest ones there can be; a BTC session carries eight
+ * decimals.
+ *
+ * Capped at something a display can actually show, so a large text size and a
+ * full field list ask for a window rather than a wall.
+ */
+export function overlayWindowSize({ overlayLayout, overlaySize, overlayFields } = {}) {
+  const size = Number.isFinite(overlaySize) ? overlaySize : DEFAULTS.overlaySize;
+  // At least one, so an empty field list still opens a window big enough to
+  // show the "nothing ticked" line rather than a sliver.
+  const fields = Math.max(1, (overlayFields || []).length);
+  const bar = overlayLayout !== 'block';
+
+  return {
+    width: Math.min(1920, Math.round(size * (bar ? fields * 5 + 1 : 11))),
+    height: Math.min(1080, Math.round(size * (bar ? 3 : fields * 1.5 + 1))),
+  };
+}
 
 /**
  * The casinos this build understands, and every domain each answers on.
@@ -341,6 +458,73 @@ export function sanitize(patch) {
   }
 
   if ('mirrors' in out) out.mirrors = sanitizeMirrors(out.mirrors);
+
+  // Keyed by casino, so an unknown key is dropped rather than kept as a pin for
+  // a site this build has never heard of. The selector is capped because it is
+  // a generated path — twenty levels of Stake's markup is long, and something
+  // far longer than that did not come from the picker.
+  if ('pins' in out) {
+    const known = new Set(Object.keys(CASINOS));
+    const offered = out.pins && typeof out.pins === 'object' ? out.pins : {};
+    const pins = {};
+
+    for (const [site, value] of Object.entries(offered)) {
+      if (!known.has(site)) continue;
+      const selector = String(value?.selector ?? '').trim().slice(0, 1000);
+      // No selector is not a pin. Storing one would be a row in the options
+      // page offering to clear something that was never set.
+      if (!selector) continue;
+      pins[site] = { selector, label: String(value?.label ?? '').trim().slice(0, 40) };
+    }
+
+    out.pins = pins;
+  }
+
+  // An allowlist, like the mirrors: a stored field this build does not know how
+  // to render would be a blank cell in the middle of somebody's stream.
+  if ('overlayFields' in out) {
+    const known = new Set(OVERLAY_FIELDS.map((f) => f.id));
+    const offered = Array.isArray(out.overlayFields) ? out.overlayFields : [];
+    // Deduplicated and put back into the canonical order, so the layout does
+    // not depend on which checkbox was clicked first.
+    const chosen = new Set(offered.filter((id) => known.has(id)));
+    out.overlayFields = OVERLAY_FIELDS.map((f) => f.id).filter((id) => chosen.has(id));
+  }
+
+  // Same allowlist as the field list, and a length cap: these go on screen at
+  // the overlay's text size, where a long one pushes every figure beside it out
+  // of the window. Blank means "use the translated label" rather than "show
+  // nothing", so an emptied box removes the override instead of storing one.
+  if ('overlayLabels' in out) {
+    const known = new Set(OVERLAY_FIELDS.map((f) => f.id));
+    const offered = out.overlayLabels && typeof out.overlayLabels === 'object' ? out.overlayLabels : {};
+    const labels = {};
+    for (const [id, text] of Object.entries(offered)) {
+      if (!known.has(id)) continue;
+      const clean = String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, 24);
+      if (clean) labels[id] = clean;
+    }
+    out.overlayLabels = labels;
+  }
+
+  if ('overlayLayout' in out) {
+    out.overlayLayout = OVERLAY_LAYOUTS.includes(out.overlayLayout)
+      ? out.overlayLayout : DEFAULTS.overlayLayout;
+  }
+
+  if ('overlaySize' in out) {
+    const n = Number(out.overlaySize);
+    out.overlaySize = Number.isFinite(n) ? Math.min(160, Math.max(12, Math.round(n))) : DEFAULTS.overlaySize;
+  }
+
+  // Only a hex colour, and only because this string is written into a style
+  // attribute: anything else here would be a page the extension renders taking
+  // dictation about its own CSS.
+  for (const field of ['overlayColor', 'overlayBackground']) {
+    if (!(field in out)) continue;
+    const raw = String(out[field] || '').trim().toLowerCase();
+    out[field] = /^#[0-9a-f]{6}$/.test(raw) ? raw : DEFAULTS[field];
+  }
 
   if ('manualRate' in out) {
     const n = Number(out.manualRate);

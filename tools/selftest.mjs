@@ -10,9 +10,9 @@ import {
   extractAmount, formatAge, formatMoney, formatNumber, parseAmount,
 } from '../src/lib/format.js';
 import { fetchRate, pingKey, ratesFromDuel, ratesFromStake } from '../src/lib/rates.js';
-import { DEFAULTS, TARGET_CURRENCIES, sanitize } from '../src/lib/settings.js';
+import { DEFAULTS, OVERLAY_FIELDS, TARGET_CURRENCIES, overlayWindowSize, sanitize } from '../src/lib/settings.js';
 import { downsample, plotSeries } from '../src/lib/chart.js';
-import { applyBalance, applyFunds, archiveEntry, chaseStatus, costReport, emptySession, fiscalYearOf, gamesOf, ingest, isStale, limitStatus, pushCurve, realisedRtp, reconcile, restate, rollSession, sessionProfit, summarise } from '../src/lib/session.js';
+import { applyBalance, applyFunds, archiveEntry, chaseStatus, costReport, emptySession, fiscalYearOf, gamesOf, ingest, isStale, limitStatus, pushCurve, realisedRtp, reconcile, restate, rollSession, sessionProfit, summarise, winRate } from '../src/lib/session.js';
 
 let failures = 0;
 
@@ -135,6 +135,66 @@ console.log('\n-- session: ingest');
   check('no phantom bet is booked', unreadable.session.bets, 0);
   check('and it is left unseen, so it counts once it can be read',
     ingest(unreadable.session, [bet('u1', 0.2, 0.4)], { currency: 'USDT' }).added, 1);
+}
+
+console.log('\n-- session: best multiplier and win rate');
+{
+  const bet = (id, amount, payout, game = 'Mines') => ({ id, amount, payout, game });
+
+  const empty = emptySession('USDT', 1000);
+  check('nothing played has no best', empty.best, null);
+  check('and no win rate to report', winRate(empty.wins, empty.bets), null);
+
+  // Derived as gross over stake, so it agrees with the turnover beside it by
+  // construction — 1 staked returning 3 is 3x, whatever any multiplier column
+  // on the page happens to say.
+  let s = ingest(empty, [bet('b2', 1, 3), bet('b1', 1, 0)], { currency: 'USDT' }).session;
+  check('best is gross over stake', s.best.multiplier, 3);
+  check('and carries the game it happened in', s.best.game, 'Mines');
+  check('a losing bet is a multiplier of zero, not a null', s.losses, 1);
+  check('one of two bets came back', winRate(s.wins, s.bets), 50);
+
+  // A bigger *payout* on a bigger stake is not a bigger multiplier. This is the
+  // difference between this figure and biggestWin, and the reason for both.
+  s = ingest(s, [bet('b3', 100, 200)], { currency: 'USDT' }).session;
+  check('a bigger win at a smaller multiple does not take the record', s.best.multiplier, 3);
+  check('though it is the biggest win', s.biggestWin, 100);
+
+  s = ingest(s, [bet('b4', 0.1, 5)], { currency: 'USDT' }).session;
+  check('a small stake paying big does take it', s.best.multiplier, 50);
+  check('the record keeps its own stake, not the session total', s.best.amount, 0.1);
+
+  // A free spin returns something against a stake of nothing. Dividing gives
+  // Infinity, which is not a record — it is a division by zero with a x after it.
+  const free = ingest(emptySession('USDT', 1000), [bet('f1', 0, 2)], { currency: 'USDT' }).session;
+  check('a zero-stake bet sets no record', free.best, null);
+  check('but is still counted as a bet', free.bets, 1);
+
+  // A row that settles after being counted restates the multiplier with it.
+  const late = ingest(emptySession('USDT', 1000), [bet('c1', 0.2, -0.2)], { currency: 'USDT' }).session;
+  check('a loss reads as zero times', late.best.multiplier, 0);
+  const fixed = ingest(late, [bet('c1', 0.2, 0.5)], { currency: 'USDT' }).session;
+  check('and the correction raises it', fixed.best.multiplier, 2.5);
+
+  check('win rate counts any return, not only a profitable one',
+    winRate(ingest(emptySession('USDT', 1000),
+      [bet('h1', 1, 0.5)], { currency: 'USDT' }).session.wins, 1), 100);
+
+  // Lifetime: the best of the bests, and the sessions that predate the field.
+  const totals = summarise([
+    { currency: 'USDT', bets: 2, wins: 1, losses: 1, wagered: 2, returned: 3, profit: 1, startedAt: 10 },
+    { currency: 'USDT', bets: 1, wins: 1, losses: 0, wagered: 1, returned: 4, profit: 3, startedAt: 20,
+      best: { multiplier: 4, game: 'Dice', amount: 1, gross: 4, at: 21 } },
+    { currency: 'USDT', bets: 1, wins: 1, losses: 0, wagered: 1, returned: 2, profit: 1, startedAt: 30,
+      best: { multiplier: 2, game: 'Mines', amount: 1, gross: 2, at: 31 } },
+  ]).USDT;
+  check('lifetime best is the highest of them', totals.best.multiplier, 4);
+  check('and says which session it was in', totals.best.startedAt, 20);
+  check('lifetime win rate is over every bet', winRate(totals.wins, totals.bets), 75);
+
+  check('a history with no records at all reports none',
+    summarise([{ currency: 'BTC', bets: 3, wins: 1, losses: 2, wagered: 3, returned: 1, profit: -2 }]).BTC.best,
+    null);
 }
 
 console.log('\n-- session: Stake\'s payout column');
@@ -489,6 +549,128 @@ console.log('\n-- settings: limits');
     ['limitLoss', 'limitWager', 'limitWin']);
   check('defaults ship with limits off',
     [DEFAULTS.limitWager, DEFAULTS.limitLoss, DEFAULTS.limitWin], [null, null, null]);
+}
+
+console.log('\n-- settings: pins');
+{
+  const pins = (v) => sanitize({ pins: v }).pins;
+
+  check('a pin for a known casino is kept',
+    pins({ stake: { selector: 'button[data-testid="coin-toggle"]', label: 'USDT' } }),
+    { stake: { selector: 'button[data-testid="coin-toggle"]', label: 'USDT' } });
+
+  // Keyed by casino, so a key this build has never heard of is not a pin.
+  check('an unknown site is dropped', pins({ nowhere: { selector: 'div' } }), {});
+  check('one good and one unknown keeps the good one',
+    Object.keys(pins({ duel: { selector: 'a' }, nowhere: { selector: 'b' } })), ['duel']);
+
+  // A pin with no selector is not a pin — storing one would put a row in the
+  // options page offering to clear something that was never set.
+  check('an empty selector is not a pin', pins({ stake: { selector: '   ' } }), {});
+  check('a missing selector is not either', pins({ stake: { label: 'USDT' } }), {});
+  check('a label is optional', pins({ stake: { selector: 'div' } }).stake.label, '');
+
+  // Generated paths are long — twenty levels of Stake's markup — but not
+  // unbounded, and something far longer did not come from the picker.
+  check('a selector is capped', pins({ stake: { selector: 'd'.repeat(4000) } }).stake.selector.length, 1000);
+  check('and so is a label', pins({ stake: { selector: 'd', label: 'x'.repeat(80) } }).stake.label.length, 40);
+
+  check('junk is an empty map, not a crash', pins('nope'), {});
+  check('nothing is pinned by default', DEFAULTS.pins, {});
+
+  // The old single pin is still read as a fallback, so it must survive.
+  check('the pre-per-site pin is still a setting', DEFAULTS.trackedSelector, '');
+
+  // Every casino has the chip the readout falls back to. Without one there is
+  // nothing to follow, and the feature is back to needing a manual pin — so
+  // this is what stops a new adapter shipping without the thing that makes
+  // pinning optional. scrape.js is a plain script, not a module; the test
+  // harness reaches it the same way tools/domtest.mjs does.
+  const { createRequire } = await import('node:module');
+  const { SITES } = createRequire(import.meta.url)('../src/lib/scrape.js');
+  const { CASINOS: registry } = await import('../src/lib/settings.js');
+  check('every casino names a balance chip to follow',
+    Object.keys(registry).filter((id) => !SITES[id]?.currencyChip), []);
+}
+
+console.log('\n-- settings: streamer overlay');
+{
+  const fields = (v) => sanitize({ overlayFields: v }).overlayFields;
+  const ids = OVERLAY_FIELDS.map((f) => f.id);
+
+  check('a known field survives', fields(['best']), ['best']);
+  // An unknown id would render as a blank cell live on somebody's stream.
+  check('an unknown one is dropped', fields(['pl', 'nonsense']), ['pl']);
+  check('duplicates collapse', fields(['pl', 'pl']), ['pl']);
+  // Put back into registry order, so the layout does not depend on the order
+  // the boxes happened to be ticked in.
+  check('order comes from the registry, not the clicks', fields(['best', 'pl']), ['pl', 'best']);
+  check('nothing at all is allowed — it is a choice, not a failure', fields([]), []);
+  check('junk is an empty list, not a crash', fields('pl'), []);
+  check('the defaults are all known fields',
+    DEFAULTS.overlayFields.every((id) => ids.includes(id)), true);
+  check('and are the two money figures only', DEFAULTS.overlayFields, ['pl', 'wagered']);
+
+  // The words on the overlay are the user's to write: an audience's language is
+  // not something the extension can know, and no translation covers "PROFIT".
+  const labels = (v) => sanitize({ overlayLabels: v }).overlayLabels;
+  check('a label is kept', labels({ pl: 'PROFIT' }), { pl: 'PROFIT' });
+  check('any script is fine — this is not a translation', labels({ pl: 'רווח' }), { pl: 'רווח' });
+  check('an unknown field is dropped', labels({ nonsense: 'x' }), {});
+  // Blank means "use the default label", not "show nothing", so emptying the
+  // box has to remove the override rather than store an empty one.
+  check('blank removes the override', labels({ pl: '   ' }), {});
+  check('whitespace is squeezed', labels({ pl: '  big   win  ' }), { pl: 'big win' });
+  // A long one pushes every figure beside it out of the window.
+  check('and it is capped', labels({ pl: 'x'.repeat(80) }).pl.length, 24);
+  check('junk is an empty map, not a crash', labels('nope'), {});
+  check('nothing is overridden by default', DEFAULTS.overlayLabels, {});
+
+  const layout = (v) => sanitize({ overlayLayout: v }).overlayLayout;
+  check('a known layout is kept', layout('block'), 'block');
+  check('an unknown one falls back', layout('spiral'), DEFAULTS.overlayLayout);
+
+  const size = (v) => sanitize({ overlaySize: v }).overlaySize;
+  check('a size is rounded', size('41.6'), 42);
+  check('and clamped at both ends', [size(4), size(900)], [12, 160]);
+  check('junk falls back to the default', size('big'), DEFAULTS.overlaySize);
+
+  // These strings are written into a style attribute on a page the extension
+  // renders, so nothing that is not a plain hex colour may reach it.
+  const colour = (v) => sanitize({ overlayColor: v }).overlayColor;
+  check('a hex colour is kept, lower-cased', colour('#FF8800'), '#ff8800');
+  check('a short hex is refused', colour('#f80'), DEFAULTS.overlayColor);
+  check('a colour name is refused', colour('red'), DEFAULTS.overlayColor);
+  check('and so is anything trying to close the attribute',
+    colour('#fff;background:url(x)'), DEFAULTS.overlayColor);
+  check('the background goes through the same check',
+    sanitize({ overlayBackground: 'javascript:1' }).overlayBackground, DEFAULTS.overlayBackground);
+
+  // The window has to hold what was ticked. Sizing it from the text height
+  // alone was the first version, and six fields in a window sized for two
+  // wrapped onto a second row and were clipped — a figure cut in half live.
+  const box = (layout, fields, size = 40) =>
+    overlayWindowSize({ overlayLayout: layout, overlaySize: size, overlayFields: Array(fields).fill('pl') });
+
+  // Measured: six fields at 40px lay out in 938×75, plus 28px of stage padding.
+  check('a six-field row clears what it measured at',
+    [box('bar', 6).width >= 966, box('bar', 6).height >= 103], [true, true]);
+  check('a row grows with the field count', box('bar', 6).width > box('bar', 2).width, true);
+  check('but its height does not — it is one row', box('bar', 6).height, box('bar', 2).height);
+  // A stack is the other way round: fixed width, height per field.
+  check('a stack grows downward instead', box('block', 6).height > box('block', 2).height, true);
+  check('at a fixed width', box('block', 6).width, box('block', 2).width);
+  // Measured: six fields stacked are 401×324, plus the same padding.
+  check('and clears what that measured at',
+    [box('block', 6).width >= 429, box('block', 6).height >= 352], [true, true]);
+
+  check('everything scales with the text size', box('bar', 2, 80).width, box('bar', 2, 40).width * 2);
+  check('nothing asks for a window bigger than a screen',
+    [box('bar', 6, 160).width <= 1920, box('block', 6, 160).height <= 1080], [true, true]);
+  // An empty list still has to show the line that says it is empty.
+  check('no fields still opens something', box('bar', 0).width > 0, true);
+  check('and junk settings fall back rather than producing NaN',
+    Number.isFinite(overlayWindowSize().width), true);
 }
 
 console.log('\n-- settings: target currency');
@@ -1144,6 +1326,29 @@ console.log('\n-- i18n');
     Object.keys(en).filter((k) =>
       Object.values(en[k].placeholders || {}).some((p) => !/^\$\d+$/.test(String(p.content)))), []);
 
+  // Two elements sharing one key while carrying different English is a silent
+  // failure: applyI18n writes the bundle's text into both, so whichever one
+  // did not write that entry displays the other's words. The account-reading
+  // toggle spent a while labelled "Rakeback % of the edge" that way.
+  //
+  // Compared on the leading text run only — several of these elements carry
+  // inner markup, and this is a regex rather than an HTML parser. That is
+  // enough for what it is looking for: two rows sharing a key differ from the
+  // first word, not in a `<b>` halfway down. Deliberately *not* checked here
+  // is whether each key's markup matches its bundle entry, which cannot be
+  // done honestly without parsing the entities and the nested tags — and which
+  // does not matter, since the markup text is only ever the fallback.
+  const html = readFileSync(new URL('../src/options.html', import.meta.url), 'utf8');
+  const written = new Map();
+  const clashes = [];
+  for (const [, key, text] of html.matchAll(/data-i18n="([\w-]+)"[^>]*>([^<]*)/g)) {
+    const value = text.replace(/\s+/g, ' ').trim();
+    if (!value) continue;
+    if (written.has(key) && written.get(key) !== value) clashes.push(key);
+    else written.set(key, value);
+  }
+  check('no two elements share a key while saying different things', [...new Set(clashes)], []);
+
   useMessages({ lang: 'en', messages: en });
   check('a plain message resolves from the bundle', t('popReset', 'fallback'), 'Reset');
   check('$1 lands in a named placeholder', t('hudNoCoinRate', 'no BTC rate yet', ['BTC']).includes('BTC'), true);
@@ -1153,6 +1358,36 @@ console.log('\n-- i18n');
 
   useMessages(null);
   check('with no bundle it falls back too', t('popReset', 'Reset'), 'Reset');
+
+  // `activeLanguage` is not only a lookup key — it goes into <html lang>, and
+  // every name Intl produces for this extension is derived from it. Claiming a
+  // language no bundle exists for is how a settings page written in English
+  // came to list its currencies in Hebrew, right to left.
+  const { TRANSLATIONS, activeLanguage } = await import('../src/lib/i18n.js');
+  const { readdirSync } = await import('node:fs');
+
+  const shipped = readdirSync(new URL('../_locales/', import.meta.url), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+  check('the shipped list matches what is on disk', [...TRANSLATIONS].sort(), shipped);
+
+  useMessages(null);
+  globalThis.chrome.i18n.getUILanguage = () => 'he';
+  check('a browser language with no bundle is not claimed', activeLanguage(), 'en');
+
+  globalThis.chrome.i18n.getUILanguage = () => 'en-GB';
+  check('but a region of one that is, is', activeLanguage(), 'en');
+
+  useMessages({ lang: 'he', messages: { popReset: { message: 'x' } } });
+  check('and a bundle claiming one is clamped too', activeLanguage(), 'en');
+
+  useMessages({ lang: 'en', messages: en });
+  check('the shipped language is returned as itself', activeLanguage(), 'en');
+
+  // The end this exists to serve: Intl must name a currency in the language the
+  // page is actually written in.
+  check('so Intl names currencies in English',
+    new Intl.DisplayNames([activeLanguage()], { type: 'currency' }).of('ILS'),
+    'Israeli New Shekel');
 }
 
 console.log('\n-- live providers');

@@ -256,6 +256,34 @@ export function compactMoney(value) {
 }
 
 /**
+ * Text made safe to put inside an innerHTML template.
+ *
+ * Not formatting, and it lives here anyway because the alternative is a copy in
+ * each page that builds markup. It matters more than it looks: game names come
+ * off the casino's own table cells, so a page that renders a game called
+ * `<img onerror=…>` would otherwise be handing the extension's own pages a
+ * script to run. The only reason a scraped string is ever safe is that
+ * something escaped it.
+ */
+export function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/**
+ * A payout multiplier, the way both casinos write one: "3.00×", "1,204×".
+ *
+ * Two decimals is what the bet table itself shows, and the precision falls away
+ * above 100× because there the decimals stop carrying information — the gap
+ * between 1.97× and 1.98× is one a reader cares about, the gap between 1204.3×
+ * and 1204.4× is not.
+ */
+export function formatMultiplier(value) {
+  if (!Number.isFinite(value) || value < 0) return '—';
+  return `${formatNumber(value, value < 100 ? 2 : 0)}×`;
+}
+
+/**
  * The rate actually used for conversion: the quoted rate minus whatever spread
  * the user says their real off-ramp charges. A player who cashes out through an
  * exchange never gets the CoinGecko mid-price, and a converter that pretends

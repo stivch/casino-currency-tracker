@@ -59,8 +59,8 @@
   const STAKE = (() => {
     const ENDPOINT = '/_api/graphql';
 
-    /** The two account operations worth reading. Anything else is left alone. */
-    const OPERATIONS = ['VipMeta', 'VipProgressMeta'];
+    /** The account operations worth reading. Anything else is left alone. */
+    const OPERATIONS = ['VipMeta', 'VipProgressMeta', 'UserBalances'];
 
     /**
      * The price table Stake's app uses to draw every figure on the page. Public
@@ -75,6 +75,11 @@
     const FALLBACK_QUERY = {
       VipMeta: 'query VipMeta { user { id rakeback { enabled balances { currency availableAmount } } } }',
       VipProgressMeta: 'query VipProgressMeta { user { id flagProgress { flag progress } } } ',
+      // Cut to `available` — the wallet bets are actually placed from. The real
+      // query asks for `vault` beside it, and that is deliberately not asked
+      // for here: nothing reads it yet, and a replay should ask for what gets
+      // used rather than for everything the app happens to want.
+      UserBalances: 'query UserBalances { user { id balances { available { amount currency } } } }',
     };
 
     // Everything Stake's own request carries that is not the browser's business.
@@ -108,6 +113,36 @@
         if (Number.isFinite(progress)) {
           meta.vip = { flag: String(user.flagProgress.flag || ''), progress };
         }
+      }
+
+      /**
+       * The wallet, from Stake's own books rather than off the page.
+       *
+       * `available` only. `vault` is money that has been put aside and cannot
+       * be bet from, so adding the two would produce a wallet figure the
+       * balance cross-check would then find disagreeing with the bet ledger by
+       * exactly the amount in the vault.
+       *
+       * Zeroes are dropped, and that is not merely a size cut — the reply
+       * enumerates *every* currency Stake supports, about a hundred and eighty
+       * of them, essentially all zero. Because it is exhaustive, a coin missing
+       * from what is sent means zero rather than unknown, which is what lets
+       * the reader treat the short list as the whole truth. Sending all of it
+       * would put a hundred and eighty rows on a bus every script on the page
+       * can read, once per capture, to say almost nothing.
+       */
+      if (Array.isArray(user.balances)) {
+        const balances = user.balances
+          .map((row) => ({
+            currency: String(row?.available?.currency || '').toUpperCase(),
+            amount: Number(row?.available?.amount),
+          }))
+          .filter((row) => row.currency && Number.isFinite(row.amount) && row.amount > 0);
+
+        // An account holding nothing anywhere is a real answer, and the empty
+        // array is how it is said — so this is keyed on the field being there,
+        // not on the filtered list having survived.
+        meta.balances = balances;
       }
 
       const found = Object.keys(meta).length > 0;

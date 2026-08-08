@@ -73,6 +73,9 @@ export function emptySession(currency = null, now = Date.now()) {
     losses: 0,
     biggestWin: 0,
     biggestLoss: 0,
+    // The session's best payout multiplier: {multiplier, game, amount, gross, at}.
+    // Null until a bet with a stake on it has been counted — see `record`.
+    best: null,
     peakProfit: 0,
     troughProfit: 0,
     lastBetAt: null,
@@ -335,6 +338,9 @@ export function summarise(history) {
       // than one net. Ten deposits against ten withdrawals nets to zero, and
       // "zero" is not what happened.
       deposited: 0, withdrawn: 0, fundedSessions: 0,
+      // The best multiplier across every session in this coin, carrying the
+      // session it happened in so the figure can be found again.
+      best: null,
       games: {},
     });
 
@@ -350,6 +356,15 @@ export function summarise(history) {
     if (funded > 0) bucket.deposited += funded;
     else if (funded < 0) bucket.withdrawn += -funded;
     if (funded !== 0) bucket.fundedSessions += 1;
+
+    // Sessions recorded before this was tracked have no `best` at all, which is
+    // why the whole thing is null-guarded rather than compared against zero: a
+    // history full of them should report "not recorded", not a best of nothing.
+    const best = session.best;
+    if (best && Number.isFinite(best.multiplier)
+      && (!bucket.best || best.multiplier > bucket.best.multiplier)) {
+      bucket.best = { ...best, startedAt: session.startedAt ?? null };
+    }
 
     for (const row of session.games || []) {
       const name = typeof row?.game === 'string' ? row.game : '';
@@ -374,6 +389,26 @@ export function summarise(history) {
 export function realisedRtp(wagered, returned, bets = Infinity, minBets = 200) {
   if (!(wagered > 0) || bets < minBets) return null;
   return (returned / wagered) * 100;
+}
+
+/**
+ * How often a bet came back with anything at all.
+ *
+ * No sample threshold, and the contrast with `realisedRtp` above is the reason
+ * rather than an oversight. Realized RTP estimates something unobservable — what
+ * the games pay in the long run — so over forty bets it is variance wearing a
+ * percent sign, and showing it reads as a verdict. Win rate is a count divided
+ * by a count: six of ten is exactly six of ten, whatever ten bets prove about
+ * anything. It describes the session rather than the games, so it is reported
+ * from the first bet.
+ *
+ * "Won" is any positive return, which is the same definition `ingest` counts by.
+ * A stake returned in part still counts — it came back, and drawing the line at
+ * profitability would make this disagree with the W/L figure beside it.
+ */
+export function winRate(wins, bets) {
+  if (!(bets > 0)) return null;
+  return (wins / bets) * 100;
 }
 
 // Cell parsing lives in lib/scrape.js, with the rest of the table reading and
@@ -521,6 +556,26 @@ export function ingest(session, rows, { currency = null, now = Date.now(), table
 
     if (profit > next.biggestWin) next.biggestWin = profit;
     if (-profit > next.biggestLoss) next.biggestLoss = -profit;
+
+    // The best multiplier, *derived* rather than read off the page.
+    //
+    // Stake's table has a multiplier column and its game replies carry
+    // `payoutMultiplier`, so there was a reading to be had for free. Deriving it
+    // from the two figures already recorded is the better trade anyway: three
+    // readers feed this function, only one of them publishes a multiplier at
+    // all, and a figure read from a fourth place is a fourth place for the
+    // readers to disagree. Gross over stake is the definition of the number, so
+    // this one can never contradict the turnover and returns beside it.
+    //
+    // A zero stake is skipped rather than counted as an enormous multiplier: a
+    // free spin returning anything divides by zero, and "∞×" is not a record.
+    // Like biggestWin above, a correction can raise this but never lower it.
+    if (amount > 0) {
+      const multiplier = gross / amount;
+      if (!next.best || multiplier > next.best.multiplier) {
+        next.best = { multiplier, game: gameOf(row), amount, gross, at: now };
+      }
+    }
 
     const running = next.returned - next.wagered;
     if (running > next.peakProfit) next.peakProfit = running;
