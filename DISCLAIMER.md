@@ -18,6 +18,14 @@ which sites the extension reads — nominative use. No casino logo, wordmark, or
 bundled, reproduced, or imitated anywhere in this project; the icons are drawn in code
 (`tools/make-icons.js`).
 
+## No endorsement
+
+This project does not promote, endorse, encourage, or facilitate gambling. It is a currency
+converter and a record-keeper for people who have already decided to play. It arranges no wagers,
+takes no stake, processes no payments, and is not compensated by anyone for any of it — no
+affiliate links, no referral codes, no sponsorship, no revenue of any kind. Nothing in this
+repository is a recommendation to gamble, to gamble more, or to gamble anywhere in particular.
+
 ## Adults only
 
 This is a tool for use alongside gambling sites, which are themselves restricted to adults. Do

@@ -79,6 +79,7 @@ Full details, including the file layout and what each test pins, are in
 | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | How to behave in the issue tracker. |
 | [LICENSE](LICENSE) | MIT, with the warranty disclaimer the limits lean on. |
 
-If gambling has stopped being entertainment, [Gambling Therapy](https://www.gamblingtherapy.org)
-is free, confidential and international. This extension shows you the numbers; it does not stop
-anything, and it was never built to.
+**This project does not promote, endorse, encourage, or facilitate gambling.** It converts
+numbers and keeps a record for people who have already decided to play. It arranges no wagers,
+processes no payments, and earns nothing either way — no affiliate links, no referral codes, no
+revenue of any kind. It reports; it does not intervene, and it cannot touch funds.
