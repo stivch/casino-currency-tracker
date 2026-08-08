@@ -1,11 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/Stivch/casino-currency-tracker/security/advisories/new
+    url: https://github.com/stivch/casino-currency-tracker/security/advisories/new
     about: Never report a security problem in a public issue. Use private reporting instead.
   - name: Question or idea
-    url: https://github.com/Stivch/casino-currency-tracker/discussions
+    url: https://github.com/stivch/casino-currency-tracker/discussions
     about: For anything that is not a specific bug or a concrete feature request.
-  - name: Gambling harm support
-    url: https://www.gamblingtherapy.org
-    about: Free, confidential, international. This extension reports; it does not intervene.

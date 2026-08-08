@@ -86,18 +86,15 @@ full terms. In particular, the author is not liable for losses arising from a st
 floored session total, a missed bet, a limit that reported rather than intervened, a scraper
 broken by a site redesign, or any decision you made while looking at this extension's output.
 
-## Gambling can be harmful
+## If you want to stop
 
-If gambling has stopped being entertainment, help exists and it is free and confidential.
+This extension shows you the numbers. It does not stop anything, and it was never built to. The
+controls that actually act are your operator's own deposit limits, cool-off periods, and
+self-exclusion, which licensed markets require it to offer.
 
-- **Gambling Therapy** — international, many languages: <https://www.gamblingtherapy.org>
-- **Gamblers Anonymous** — international meeting finder: <https://www.gamblersanonymous.org>
-- **GamCare** (UK) — 0808 8020 133, <https://www.gamcare.org.uk>
-- **National Council on Problem Gambling** (US) — 1-800-522-4700, <https://www.ncpgambling.org>
-
-Services and helpline numbers differ by country; search for the one operating where you live.
-Your operator is also required, in most licensed markets, to offer deposit limits, cool-off
-periods, and self-exclusion — those act, and this extension does not.
+If gambling has stopped being entertainment,
+[Gambling Therapy](https://www.gamblingtherapy.org) is free, confidential, international, and
+staffed in many languages.
 
 ## Reporting a problem
 

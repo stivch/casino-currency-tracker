@@ -10,7 +10,7 @@ You need Node 22 or newer and Chrome 111 or newer. That is the whole toolchain �
 `npm install`, no build step, and no bundler.
 
 ```bash
-git clone https://github.com/Stivch/casino-currency-tracker.git
+git clone https://github.com/stivch/casino-currency-tracker.git
 ```
 
 Load it into Chrome: `chrome://extensions` → **Developer mode** on → **Load unpacked** → select
