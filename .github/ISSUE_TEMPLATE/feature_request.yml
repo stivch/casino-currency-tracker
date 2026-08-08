@@ -5,8 +5,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        `ROADMAP.md` and `PLAN.md` already hold a queue of planned work — worth a look first, in
-        case yours is on it.
+        `ROADMAP.md` already holds a queue of planned work — worth a look first, in case yours
+        is on it.
 
         Some things are settled positions rather than open questions: no telemetry, no server,
         nothing that acts on your behalf or touches funds, nothing that reads other players'

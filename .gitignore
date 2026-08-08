@@ -7,3 +7,7 @@ dist/
 *_example.json
 *.capture.json
 *.har
+
+# Internal planning: competitive analysis and unshipped feature design.
+# Kept locally, deliberately not part of the public repository.
+PLAN.md

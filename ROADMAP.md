@@ -164,8 +164,9 @@ conclusion.
 **Provably-fair seed verification.** Heavy, and the casinos' own tooling covers it.
 
 **Stake sizing, Kelly, or any bet-size suggestion.** Reporting realized RTP describes what
-happened. Recommending a bet size advises what to do next, which is the line PLAN.md's legal
-review already flags. Everything above stays on the descriptive side of it deliberately.
+happened. Recommending a bet size advises what to do next, and this project does not give
+advice — see [DISCLAIMER.md](DISCLAIMER.md). Everything above stays on the descriptive side of
+that line deliberately.
 
 ---
 

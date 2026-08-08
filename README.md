@@ -53,7 +53,7 @@ neither carries anything about you — see [PRIVACY.md](PRIVACY.md).
 | [docs/LIMITATIONS.md](docs/LIMITATIONS.md) | What is unproven, unsupported, or deliberately refused. |
 | [docs/ADAPTERS.md](docs/ADAPTERS.md) | The contract for adding a casino. |
 
-Plans and history: [CHANGELOG.md](CHANGELOG.md), [ROADMAP.md](ROADMAP.md), [PLAN.md](PLAN.md).
+Plans and history: [CHANGELOG.md](CHANGELOG.md), [ROADMAP.md](ROADMAP.md).
 
 ## Development
 
