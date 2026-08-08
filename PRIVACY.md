@@ -1,6 +1,6 @@
 # Privacy policy
 
-**Casino Currency Tracker** — last updated 4 August 2026.
+**Casino Currency Tracker** — last updated 9 August 2026.
 
 ## The short version
 
@@ -18,6 +18,7 @@ All of it is in Chrome's own extension storage on your machine:
 | Recorded sessions: bet counts, stakes, returns, profit, the rate at close | `chrome.storage.local` | The history and reports. Never leaves the machine. |
 | The current session, cached exchange rates, diagnostics | `chrome.storage.local` | Working state. |
 | Your optional CoinGecko API key | `chrome.storage.local` only | It is a credential. It is deliberately kept out of sync, and is never given to the script that runs inside the casino's page. |
+| A self-exclusion's end date, if you set one | `chrome.storage.sync` | So an exclusion set on one machine is waiting on the others. See below. |
 
 Uninstalling the extension deletes all of it. There is no copy anywhere else — which is why the
 extension offers a backup export you control.
@@ -35,6 +36,22 @@ lookups any currency converter makes. Each provider's own privacy policy governs
 about the request (an IP address, as with any web request).
 
 Nothing is ever sent to the extension's developer. There is no endpoint to send it to.
+
+## Self-exclusion, and what it needs
+
+If you set a self-exclusion, the extension blocks the casinos it knows about until the period you
+chose runs out. Two things follow from that, and both are worth stating plainly:
+
+- **It uses Chrome's `declarativeNetRequest` permission** to refuse the navigation. The rule is a
+  static list of the casino domains already in this manifest, evaluated by Chrome itself. The
+  extension does not see, log, or record the addresses you visit — that permission grants the
+  ability to declare a rule, not to watch traffic. Nothing about where you browse leaves your
+  machine, because nothing about it reaches the extension in the first place.
+- **The record is one date in `chrome.storage.sync`** — when the exclusion ends, and when it
+  started. It is in sync storage on purpose, so that an exclusion set on one machine is waiting on
+  the others. If you have Chrome sync switched off, it applies only to the machine you set it on.
+
+Nothing else about the feature is stored, and nothing about it is transmitted anywhere.
 
 ## What the extension reads on the casino's site
 

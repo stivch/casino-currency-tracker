@@ -77,9 +77,16 @@ if you disagree.
   not negotiable.
 - **No new network hosts** beyond `api.coingecko.com` and `open.er-api.com` without a discussion
   first. Each one is a privacy-policy change and a manifest permission.
-- **Nothing that acts on the user's behalf.** No auto-betting, no auto-cashout, no wallet or
-  account controls, no clicking anything on the casino's page. The extension reports; it does not
-  intervene, and it does not touch funds. See [DISCLAIMER.md](DISCLAIMER.md).
+- **Nothing that acts on the user's behalf at the casino.** No auto-betting, no auto-cashout, no
+  wallet or account controls, no clicking anything on the casino's page, and nothing that touches
+  funds. This one has not moved.
+- **Intervening is allowed only against the user's own prior instruction, and only opt-in.**
+  Self-exclusion, the cooldown screen and locked limits block things, which the extension once
+  said it would never do — the reversal was deliberate, and the rule that replaced it is narrow:
+  an intervention must be switched on by the user, must act on a decision they made earlier
+  rather than one this extension made for them, and must never oversell what it can enforce. A
+  feature that blocks by default, or that implies it cannot be bypassed, is out. See
+  [DISCLAIMER.md](DISCLAIMER.md).
 - **Nothing that reads other players' data.** Stake's "All Bets" tab is explicitly refused and
   that refusal is pinned in the tests. Keep it that way.
 - **New request-originating features stay off by default.** Gated on the tab being open, visible,

@@ -4,13 +4,15 @@ import { currencySymbol, escapeHtml, formatMoney, formatMultiplier } from './lib
 import { costReport, fiscalYearOf, realisedRtp, restate, winRate } from './lib/session.js';
 import { limitSwitchText } from './lib/notices.js';
 import { CASINOS, DEFAULTS, OPTIONAL_DOMAINS, OVERLAY_FIELDS, TARGET_CURRENCIES, casinoForDomain, mirrorOrigins, overlayWindowSize } from './lib/settings.js';
+import { EXCLUSION_PERIODS, exclusionState, lockedKeys, remainingParts } from './lib/exclusion.js';
 
 const $ = (id) => document.getElementById(id);
 
 const CHECKBOXES = ['enabled', 'trackSession', 'showHud', 'hoverTooltip', 'selectionTooltip',
   'assumeUnlabeled', 'inlineAnnotate', 'showBadge', 'notifyLimits', 'notifyChasing', 'stakeRates',
-  'trackRakeback', 'rakebackPoll', 'overlayCoin'];
-const NUMBERS = ['refreshMinutes', 'decimals', 'feePercent', 'sessionIdleMinutes', 'overlaySize'];
+  'trackRakeback', 'rakebackPoll', 'overlayCoin', 'lockLimits', 'cooldownScreen'];
+const NUMBERS = ['refreshMinutes', 'decimals', 'feePercent', 'sessionIdleMinutes', 'overlaySize',
+  'cooldownSeconds'];
 // Percentages typed as text so "1.5" and a pasted "1.5%" both survive.
 const RATES = ['houseEdgePercent', 'rakebackPercent'];
 const SELECTS = ['targetCurrency', 'fiscalYearStart', 'overlayLayout'];
@@ -140,17 +142,21 @@ async function send(message) {
  */
 let statusTimer = null;
 
-function status(text) {
+function status(text, refusal = false) {
   const box = $('status');
   box.textContent = text;
   box.classList.toggle('show', Boolean(text));
+  box.classList.toggle('bad', Boolean(refusal));
 
   clearTimeout(statusTimer);
   if (text) {
+    // A refusal has to outlast a confirmation. "Saved." is a receipt for
+    // something the user watched happen; "that is locked" is the only
+    // explanation they will get for a control that sprang back.
     statusTimer = setTimeout(() => {
       box.classList.remove('show');
       box.textContent = '';
-    }, 1600);
+    }, refusal ? 6000 : 1600);
   }
 }
 
@@ -161,6 +167,8 @@ function render() {
   for (const id of NUMBERS) $(id).value = settings[id];
   for (const id of RATES) $(id).value = settings[id];
   for (const id of SELECTS) $(id).value = settings[id];
+
+  renderExclusion(settings);
 
   // Blank means "use the live feed", so null must not render as "null".
   $('manualRate').value = Number.isFinite(settings.manualRate) ? settings.manualRate : '';
@@ -1104,8 +1112,72 @@ function renderKey() {
   }
 }
 
+/**
+ * Draw the self-exclusion controls for the state they are actually in.
+ *
+ * Two shapes: not excluded, where the period picker and its button are live;
+ * and excluded, where they are not — along with everything else that could be
+ * used to get out, which is what `lockedKeys` names.
+ *
+ * The picker stays visible while excluded rather than being hidden, because
+ * extending is still allowed and hiding it would suggest otherwise.
+ */
+function renderExclusion(settings) {
+  const state_ = exclusionState(settings);
+  // A session is live when it has actually taken a bet, which is the same test
+  // the worker applies before refusing the write.
+  const sessionLive = Boolean(settings.trackSession && state.session && state.session.bets > 0);
+  const locked = lockedKeys(settings, Date.now(), { sessionLive });
+
+  $('exclusionActiveRow').hidden = !state_.active;
+
+  if (state_.active) {
+    const { unit, value } = remainingParts(state_.msRemaining);
+    const lang = activeLanguage();
+    const left = new Intl.NumberFormat(lang, {
+      style: 'unit', unit: unit.replace(/s$/, ''), unitDisplay: 'long',
+    }).format(value);
+    const until = new Intl.DateTimeFormat(lang, { dateStyle: 'full', timeStyle: 'short' })
+      .format(state_.until);
+
+    $('exclusionUntilText').textContent =
+      t('optExclusionLeft', '$LEFT$ left — until $DATE$', [left, until]);
+    $('exclusionStart').textContent = t('optExclusionExtend', 'Extend');
+  } else {
+    $('exclusionStart').textContent = t('optExclusionStart', 'Start');
+  }
+
+  // Every control the lock names, disabled with the same rule that refuses the
+  // write. Reading the list rather than hard-coding it keeps the greying-out
+  // and the refusal from drifting apart.
+  for (const id of ['lockLimits', 'cooldownScreen', 'cooldownSeconds']) {
+    $(id).disabled = locked.has(id === 'cooldownSeconds' ? 'cooldownScreen' : id);
+  }
+  $('exclusionPeriod').disabled = false;
+  $('mirrorAdd')?.toggleAttribute('disabled', locked.has('mirrors'));
+}
+
 async function patch(changes) {
-  state = await send({ type: 'setSettings', patch: changes });
+  let reply;
+
+  // send() turns an { error } reply into a throw, so a refusal arrives here
+  // rather than as a value. It has to put the control back where it was —
+  // otherwise the box stays ticked while the setting is not, which reads as a
+  // save that worked.
+  try {
+    reply = await send({ type: 'setSettings', patch: changes });
+  } catch (error) {
+    const why = String(error?.message || '');
+    if (why !== 'locked' && why !== 'limit-locked') throw error;
+
+    render();
+    status(why === 'limit-locked'
+      ? t('statusLimitLocked', 'Limits are locked while a session is running. Tighten one, or end the session.')
+      : t('statusExcluded', 'That is locked until your self-exclusion ends.'), true);
+    return;
+  }
+
+  state = reply;
   // The bundle can change under us — this is where the language setting takes
   // effect, and applyI18n is idempotent because the keys live in the markup.
   useMessages(state.i18n);
@@ -1136,6 +1208,51 @@ for (const id of COLOURS) {
   // state mirror. The value on release is the only one anybody chose.
   $(id).addEventListener('change', (event) => patch({ [id]: event.target.value }));
 }
+
+// The period picker is filled from the registry rather than written into the
+// markup, so the stored ids and the offered options cannot drift.
+$('exclusionPeriod').innerHTML = EXCLUSION_PERIODS
+  .map(({ id, hours }) => {
+    const days = hours / 24;
+    const label = days >= 365
+      ? t('optExclYear', 'a year')
+      : t('optExclDays', `${days} days`, [String(days)]);
+    return `<option value="${id}">${escapeHtml(label)}</option>`;
+  })
+  .join('');
+$('exclusionPeriod').value = '7d';
+
+/**
+ * Start or extend an exclusion.
+ *
+ * The one confirmation dialog in this extension, and it earns its place: this
+ * is the only control here whose effect cannot be undone by clicking it again.
+ * The wording says the part that matters — no early end — rather than asking
+ * "are you sure", which nobody reads.
+ */
+$('exclusionStart').addEventListener('click', async () => {
+  const period = $('exclusionPeriod').value;
+  const chosen = $('exclusionPeriod').selectedOptions[0]?.textContent?.trim() || period;
+  const extending = exclusionState(state.settings).active;
+
+  const question = extending
+    ? t('optExclConfirmExtend', 'Extend your self-exclusion to $PERIOD$ from now? It still cannot be ended early.', [chosen])
+    : t('optExclConfirm', 'Block every casino for $PERIOD$? There is no way to end this early — you would have to remove the extension.', [chosen]);
+
+  if (!window.confirm(question)) return;
+
+  try {
+    state = await send({ type: 'beginExclusion', period });
+  } catch {
+    // Refused rather than broken: the only reason is a period that would end
+    // sooner than the exclusion already running.
+    status(t('statusExclRefused', 'That would end sooner than the exclusion already running.'), true);
+    return;
+  }
+
+  render();
+  status(t('statusExclStarted', 'Self-exclusion started.'));
+});
 
 $('openOverlay').addEventListener('click', () => openOverlay());
 

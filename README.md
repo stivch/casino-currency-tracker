@@ -7,9 +7,10 @@ A Chrome extension that shows casino amounts in your own currency at a live rate
 forty-five fiats, shekels by default. Works on **Stake** and on **Duel**. No account, no API
 key, no build step.
 
-> An independent, unofficial tool. Not affiliated with Stake, Duel, or any casino. It reports; it
-> does not intervene, and it cannot touch funds. Using a third-party tool on a casino site may
-> breach that operator's terms, and that risk lands on your account — read
+> An independent, unofficial tool. Not affiliated with Stake, Duel, or any casino. It cannot touch
+> funds, and it reports rather than intervenes unless you switch on one of the three
+> pre-commitment features yourself. Using a third-party tool on a casino site may breach that
+> operator's terms, and that risk lands on your account — read
 > **[DISCLAIMER.md](DISCLAIMER.md)** before installing.
 
 ## Install
@@ -41,6 +42,10 @@ rather than anything specific to this one.
 - **A streamer overlay** for OBS, with labels you write yourself.
 - **Rakeback and VIP progress**, read from responses the casino's app already receives. Off by
   default.
+- **Pre-commitment, if you want it** — self-exclusion for a period you set, a forced pause when a
+  limit is crossed, and limits that cannot be raised mid-session. All three are off unless you
+  turn them on, and none of them can be enforced against someone who removes the extension. See
+  [docs/SESSIONS.md](docs/SESSIONS.md#pre-commitment).
 
 Everything stays on your machine. Two network calls exist, both to public rate providers, and
 neither carries anything about you — see [PRIVACY.md](PRIVACY.md).
@@ -88,4 +93,5 @@ Full details, including the file layout and what each test pins, are in
 **This project does not promote, endorse, encourage, or facilitate gambling.** It converts
 numbers and keeps a record for people who have already decided to play. It arranges no wagers,
 processes no payments, and earns nothing either way — no affiliate links, no referral codes, no
-revenue of any kind. It reports; it does not intervene, and it cannot touch funds.
+revenue of any kind. It cannot touch funds, and the only things it ever blocks are the ones you
+asked it to block.

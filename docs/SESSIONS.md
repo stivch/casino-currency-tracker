@@ -220,7 +220,10 @@ turning itself off.
 The money limits need the session's coin to be priced. A coin the providers did not return sits
 them out rather than measuring against a rate that is not its own; the time limit still runs.
 
-**Nothing is blocked or enforced — this reports, it does not intervene.**
+**On their own, the limits block nothing** — they flag, they notify, and the reading is yours. Two
+of the switches under [Pre-commitment](#pre-commitment) change that, and both are off until you
+turn them on: the cooldown screen holds the page briefly on a crossing, and locked limits refuse
+to raise one mid-session. Neither stops a bet.
 
 ## The P/L curve
 
@@ -300,3 +303,59 @@ than folded in at some other session's rate. One closed before any rate was ever
 no figure at all. The other has a figure, but only in the currency it closed in — recorded before
 the snapshot existed, or with a rate you typed by hand, which cannot honestly be crossed into
 another currency. Both are said out loud under the table.
+
+## Pre-commitment
+
+Three switches, all off until you turn them on, and the only places this extension does anything
+other than report. They live in Options → *Session & limits*.
+
+**None of them can be enforced.** Chrome removes an extension in two clicks and takes its settings
+with it, and nothing here can close an account or reach a device this is not installed on. What
+they do is raise the cost of a decision made in the moment. If you need something that holds, ask
+the casino for their own self-exclusion — theirs can shut the account.
+
+### Locked limits
+
+While a session is live, a limit can be tightened but not raised and not switched off. Between
+sessions everything is editable, because that is when the choosing is supposed to happen.
+
+Switching a limit off counts as raising it, since off is the loosest setting there is. So does
+raising the win target — a higher one means playing on rather than stopping.
+
+The switch that enforces this locks alongside the limits. Refusing to raise a loss limit achieves
+nothing if the switch enforcing it can be flicked off first, so it freezes for as long as the
+session runs.
+
+### Cooldown screen
+
+The first time a session crosses each limit, the page is held for a few seconds — between 5 and
+600, your choice — before it can be dismissed.
+
+Once per limit, not once per crossing. A session that crosses its loss limit and keeps playing is
+not interrupted every few seconds by the same screen: a pause that fires repeatedly gets dismissed
+reflexively, which is the failure mode it exists to avoid. It is marked as seen when it opens
+rather than when it is dismissed, so reloading mid-countdown does not start it again.
+
+The screen is drawn in the extension's own shadow root, like everything else on the page, so the
+casino's DOM is never touched.
+
+### Self-exclusion
+
+Blocks every casino this extension knows about for a period between a day and a year.
+
+Arriving at one lands on a page explaining why. A tab that was already open when the exclusion
+started *leaves* rather than being covered — a cover leaves the casino loaded underneath it, still
+holding a session, still showing a balance, one deleted node away from being back.
+
+The block is a `declarativeNetRequest` rule evaluated by Chrome, not something the content script
+does. That is deliberate: a content script runs *after* the navigation it would be stopping, by
+which point the page is already loading and already talking to the casino. Chrome does not report
+your browsing to the extension in order to apply the rule — see [PRIVACY.md](../PRIVACY.md).
+
+**There is no way to end one early.** Not in Options, not in the popup, not on the blocked page —
+especially not on the blocked page, which is where somebody would most want one. It can be
+extended, never shortened, and while it runs the period control, its own switch and the domain
+list are all frozen: an exclusion with a reachable off switch is not an exclusion.
+
+The end date lives in `chrome.storage.sync`, so an exclusion set on one machine is waiting on the
+others. With Chrome sync off it applies only to the machine it was set on.

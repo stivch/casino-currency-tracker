@@ -5,6 +5,39 @@ The version in `manifest.json` is the single source of truth; a release is a
 
 ## Unreleased
 
+- **Self-exclusion, a cooldown screen, and limits that lock.** Three switches, all
+  off until you turn them on, and the first time this extension does anything
+  other than report.
+
+  *Self-exclusion* blocks every casino it knows about for a period between a day
+  and a year. Arriving at one lands on a page explaining why instead, and a tab
+  already open leaves rather than being covered — a cover leaves the casino
+  loaded underneath it, still holding a session, one deleted node away from
+  being back. The block is a `declarativeNetRequest` rule rather than anything
+  the content script does, because a content script runs *after* the navigation
+  it would be stopping. **There is no way to end one early**, which is the entire
+  feature: the period picker, its own switch, and the domain list all freeze
+  together for the duration, since an exclusion with a reachable off switch is
+  not an exclusion. It can be extended, never shortened.
+
+  *The cooldown screen* holds the page for a few seconds the first time a session
+  crosses each limit. Once per limit rather than once per crossing — a pause that
+  fires every few seconds gets dismissed reflexively, which is the failure mode
+  it exists to avoid.
+
+  *Locked limits* refuse to raise or switch off a limit while a session is live.
+  Tightening one is always allowed, and between sessions everything is editable,
+  because that is when the choosing is meant to happen. The switch enforcing it
+  locks too: refusing to raise a loss limit achieves nothing if the switch can be
+  flicked off first.
+
+  None of it can be enforced, and every surface says so. Chrome removes an
+  extension in two clicks and takes its settings with it; nothing here can close
+  an account or reach a device this is not installed on. It raises the cost of a
+  decision made in the moment, which is worth something and is not the same as
+  being stopped — the casino's own self-exclusion is still the one that holds,
+  and the options page, the blocked page and `DISCLAIMER.md` all point at it.
+
 - **Stake's wallet, from its own books.** `UserBalances` joins `VipMeta` and
   `VipProgressMeta` as an operation the bridge reads when account reading is
   switched on. It gives the balance for every coin at once, so the readout has

@@ -71,13 +71,32 @@ Nothing produced by this extension is advice of any kind.
 - Nothing here is a recommendation to gamble, to gamble more, to gamble on a particular game, or
   to hold or convert any currency or cryptocurrency.
 
-## It reports; it does not intervene
+## What it does, and does not, stop
 
-The limits, alerts, and session tracking exist to show you what is happening. They do **not**
-block a bet, close a session, lock the site, restrict a deposit, or enforce anything. The
-extension cannot move funds and never touches the casino's account or wallet controls. If you
-need a tool that actually stops play, use your operator's own deposit limits, cool-off, and
-self-exclusion features, or a blocking product built for that purpose.
+By default it reports and nothing more. The limits, alerts, and session tracking exist to show
+you what is happening; they do **not** block a bet, close a session, restrict a deposit, or
+enforce anything, and the extension can never move funds or touch the casino's account and
+wallet controls.
+
+Three features are the exception, and all three are **off until you switch them on**:
+
+- **Self-exclusion** blocks every casino this extension knows about for a period you choose.
+  Once set it cannot be shortened or cancelled from anywhere in the extension.
+- **The cooldown screen** holds the page for a few seconds the first time a session crosses each
+  limit you set.
+- **Locked limits** refuse to raise or switch off a session limit while a session is running.
+  Tightening one is always allowed.
+
+**None of them can be enforced, and this matters.** Chrome removes an extension in two clicks and
+takes its settings with it. Nothing here can close your account, reach a device this extension is
+not installed on, or stop you playing somewhere it has never heard of. What these do is raise the
+cost of a decision made in the moment — which is worth something, and is not the same as being
+stopped.
+
+**If you need something that actually holds, ask the casino for their own self-exclusion.** Theirs
+can close the account, and in licensed markets they are required to offer it. Use their deposit
+limits and cool-off periods too, or a blocking product built for the job. Treat this extension as
+a supplement to those, never as a replacement for them.
 
 ## No warranty
 

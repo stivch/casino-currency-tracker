@@ -9,7 +9,8 @@
 // mirrored into chrome.storage.local, which content scripts can read and watch
 // without the "tabs" permission that a targeted broadcast would cost.
 
-import { DEFAULTS, TARGET_CURRENCIES, loadSettings, mirrorOrigins, sanitize } from './lib/settings.js';
+import { CASINOS, DEFAULTS, TARGET_CURRENCIES, loadSettings, mirrorOrigins, sanitize } from './lib/settings.js';
+import { beginExclusion, exclusionState, limitEditAllowed, patchAllowed } from './lib/exclusion.js';
 import { fetchFiatTable, fetchRate, pingKey, ratesFromDuel, ratesFromStake } from './lib/rates.js';
 import { coinRate, coinUsd, compactMoney, displayDecimals, effectiveRate, formatMoney, formatNumber } from './lib/format.js';
 import { t, useMessages } from './lib/i18n.js';
@@ -1248,6 +1249,90 @@ async function mirrorState() {
   return state;
 }
 
+// -------------------------------------------------------------- self-exclusion
+//
+// The block itself is a declarativeNetRequest rule rather than anything the
+// content script does, because a content script runs *after* the navigation it
+// would be covering: the page is already loading, already talking to the
+// casino, and already showing a balance behind the cover. A network rule
+// refuses the navigation outright, and the tab lands on blocked.html instead.
+//
+// Redirect rather than block, which costs host permissions for the casino
+// domains this already injects into. An ERR_BLOCKED_BY_CLIENT screen would be
+// stronger friction and worse information: somebody who set a month-long
+// exclusion three weeks ago deserves to be told what is happening rather than
+// left to conclude their browser is broken.
+
+/**
+ * Rule id for the exclusion block.
+ *
+ * A fixed id, and the only dynamic rule this extension has. Dynamic rules
+ * survive restarts and updates, which is the property that matters here — an
+ * exclusion that lifted because Chrome restarted would be worthless — but it
+ * also means a stale rule outlives the state that created it, so every path
+ * that changes the exclusion calls syncBlockRules rather than assuming.
+ */
+const BLOCK_RULE_ID = 1;
+const EXCLUSION_ALARM = 'exclusion-expiry';
+
+/** Every domain the block should cover, built-in and switched-on alike. */
+function blockedDomains(settings) {
+  const builtIn = Object.values(CASINOS).flatMap((casino) => casino.builtIn);
+  const chosen = (settings.mirrors || []).map((entry) => entry.host);
+  return [...new Set([...builtIn, ...chosen])];
+}
+
+/**
+ * Make the network rules agree with the stored exclusion.
+ *
+ * Idempotent, and called from everywhere that could disagree: the message
+ * handler, the expiry alarm, startup, and install. Removing a rule id that is
+ * not there is not an error, so the remove always runs.
+ */
+async function syncBlockRules(settings = null) {
+  const conf = settings || await loadSettings();
+  const excluded = exclusionState(conf).active;
+
+  const addRules = excluded
+    ? [{
+        id: BLOCK_RULE_ID,
+        priority: 1,
+        action: {
+          type: 'redirect',
+          redirect: { extensionPath: '/src/blocked.html' },
+        },
+        condition: {
+          // requestDomains covers subdomains, which is what the manifest's own
+          // match patterns do; listing them separately would be two lists to
+          // keep in step.
+          requestDomains: blockedDomains(conf),
+          resourceTypes: ['main_frame'],
+        },
+      }]
+    : [];
+
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [BLOCK_RULE_ID],
+    addRules,
+  });
+
+  await chrome.alarms.clear(EXCLUSION_ALARM);
+  if (excluded) {
+    // One alarm, at the end. Chrome clamps alarms to a minute, and an exclusion
+    // is measured in days, so there is nothing to gain from polling — the rule
+    // is what enforces it, and this only exists to take the rule down again.
+    chrome.alarms.create(EXCLUSION_ALARM, { when: exclusionState(conf).until });
+  }
+}
+
+/** Is a session running right now? The pre-commitment rule only bites then. */
+async function sessionIsLive() {
+  const settings = await loadSettings();
+  if (!settings.trackSession) return false;
+  const session = await readSession();
+  return Boolean(session && session.bets > 0);
+}
+
 // ------------------------------------------------------------------- alarms
 
 async function rescheduleAlarm() {
@@ -1258,6 +1343,17 @@ async function rescheduleAlarm() {
 }
 
 chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === EXCLUSION_ALARM) {
+    // The exclusion has run out. Clear the record and take the rule down — in
+    // that order, so a failure here leaves somebody blocked rather than
+    // unblocked with a record saying otherwise.
+    chrome.storage.sync.set({ exclusionUntil: null, exclusionStarted: null })
+      .then(() => syncBlockRules())
+      .then(() => mirrorState())
+      .catch(() => {});
+    return;
+  }
+
   if (alarm.name !== ALARM_NAME) return;
   // Rate first, so a session filed on this tick is frozen at the freshest rate
   // available. The closing mirror is what keeps the time limit honest: without
@@ -1289,6 +1385,11 @@ async function boot() {
   await migrateLimitKeys();
   await chrome.storage.sync.set({ ...DEFAULTS, ...(await chrome.storage.sync.get(DEFAULTS)) });
   await syncMirrorScripts().catch(() => {});
+  // Before anything else that could take time. The dynamic rule survives a
+  // restart on its own, but this is also the path that takes one *down* after
+  // an exclusion expired while the browser was closed, and the only path that
+  // notices a rule left behind by a crash mid-write.
+  await syncBlockRules().catch(() => {});
   await rescheduleAlarm();
   await mirrorState();
   await refreshRate();
@@ -1360,11 +1461,53 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => { // es
 
       case 'setSettings': {
         const patch = sanitize(message.patch || {});
+        const settings = await loadSettings();
+
+        // The two refusals, checked here rather than in the options page,
+        // because the page is not the only thing that can send this and a lock
+        // enforced only by the UI drawing a control greyed out is not a lock.
+        //
+        // Refused outright rather than partly applied: a save that reports
+        // success while dropping half of what was asked teaches the user that
+        // the lock is soft.
+        const live = await sessionIsLive();
+        const gate = patchAllowed(settings, patch, Date.now(), { sessionLive: live });
+        if (!gate.allowed) {
+          sendResponse({ error: 'locked', key: gate.key, reason: gate.reason });
+          break;
+        }
+
+        const limits = limitEditAllowed(settings, patch, { sessionLive: live });
+        if (!limits.allowed) {
+          sendResponse({ error: 'limit-locked', key: limits.key });
+          break;
+        }
+
         // Editing a limit is the acknowledgement that the conversion notice was
         // asking for, so it stops being shown at that point rather than sitting
         // there being scrolled past for a week.
         if (MONEY_LIMITS.some((key) => key in patch)) await chrome.storage.local.remove('limitSwitch');
         await chrome.storage.sync.set(patch);
+        // The mirror list decides which domains the block covers, and the
+        // exclusion switch can be turned on by an ordinary save.
+        if ('mirrors' in patch || 'selfExclusion' in patch) await syncBlockRules();
+        sendResponse(await mirrorState());
+        break;
+      }
+
+      case 'beginExclusion': {
+        const settings = await loadSettings();
+        const patch = beginExclusion(settings, message.period);
+
+        // null means the period was unknown, or it would have ended sooner than
+        // the exclusion already running. Both are refusals rather than errors.
+        if (!patch) {
+          sendResponse({ error: 'refused' });
+          break;
+        }
+
+        await chrome.storage.sync.set(patch);
+        await syncBlockRules();
         sendResponse(await mirrorState());
         break;
       }

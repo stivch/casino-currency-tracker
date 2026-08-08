@@ -235,8 +235,9 @@
       </div>
 
       <h2 data-i18n="optLimits">Limits</h2>
-      <p class="hint" data-i18n="optLimitsIntro">Each one flags in the overlay and, if you want, as a desktop notice. Nothing is
-        blocked and no bet is stopped — these report, and the reading is yours.</p>
+      <p class="hint" data-i18n="optLimitsIntro">Each one flags in the overlay and, if you want, as a desktop notice. On their
+        own they report and stop nothing — no bet is blocked and no site is closed. The three switches under
+        <em>Pre-commitment</em> below are the exception, and each is off until you turn it on.</p>
 
       <div class="group">
         <div class="row">
@@ -264,6 +265,56 @@
             <span class="sub" data-i18n="optLimTimeSub">Flags once the session has been running this long. Counted from its first
               bet, not from opening the tab, and it needs no rate — so it applies to every coin. Blank = off.</span></span>
           <input type="text" id="limitMinutes" placeholder="off" data-i18n-ph="popOff" inputmode="numeric">
+        </div>
+      </div>
+
+      <h2 data-i18n="optPrecommit">Pre-commitment</h2>
+      <p class="hint" data-i18n="optPrecommitIntro">The three places this extension stops reporting and starts intervening. All
+        three are off by default, because a tool that began blocking things after an update would not be the tool you
+        installed.</p>
+      <p class="hint warn" data-i18n="optPrecommitHonest"><strong>None of this can be enforced.</strong> Chrome removes an
+        extension in two clicks and takes its settings with it, and nothing here can close an account or reach a casino you
+        open on another device. This raises the cost of a decision; it is not a wall. If you need one that holds, ask the
+        casino for their own self-exclusion — theirs can shut the account.</p>
+
+      <div class="group">
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optLockLimits">Lock limits during a session</span>
+            <span class="sub" data-i18n="optLockLimitsSub">While a session is running, a limit can be tightened but not raised
+              or switched off. Between sessions everything is editable — that is when the choosing is meant to happen.</span></span>
+          <label class="switch"><input type="checkbox" id="lockLimits"><span></span></label>
+        </div>
+
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optCooldown">Cooldown screen</span>
+            <span class="sub" data-i18n="optCooldownSub">The first time a session crosses each limit, hold the page for a
+              moment before it can be dismissed. Once per limit, not once per bet.</span></span>
+          <label class="switch"><input type="checkbox" id="cooldownScreen"><span></span></label>
+        </div>
+
+        <div class="row">
+          <span class="grow"><span class="label" data-i18n="optCooldownSecs">Pause length (seconds)</span>
+            <span class="sub" data-i18n="optCooldownSecsSub">Between 5 and 600.</span></span>
+          <input type="text" id="cooldownSeconds" inputmode="numeric">
+        </div>
+      </div>
+
+      <h3 data-i18n="optExclusion">Self-exclusion</h3>
+      <p class="hint" data-i18n="optExclusionSub">Blocks every casino this extension knows about for a period you choose.
+        Arriving at one lands on an explanation instead, and a tab already open leaves. <strong>There is no way to end it
+        early</strong> — not here, not anywhere in the extension. Choose accordingly.</p>
+
+      <div class="group">
+        <div class="row" id="exclusionSetRow">
+          <span class="grow"><span class="label" data-i18n="optExclusionFor">Exclude me for</span>
+            <span class="sub" data-i18n="optExclusionForSub">Set once. It can be extended later, never shortened.</span></span>
+          <select id="exclusionPeriod"></select>
+          <button type="button" id="exclusionStart" class="danger" data-i18n="optExclusionStart">Start</button>
+        </div>
+
+        <div class="row" id="exclusionActiveRow" hidden>
+          <span class="grow"><span class="label" data-i18n="optExclusionActive">Currently excluded</span>
+            <span class="sub" id="exclusionUntilText"></span></span>
         </div>
       </div>
     </section>

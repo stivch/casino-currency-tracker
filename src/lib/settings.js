@@ -1,4 +1,5 @@
 import { parseAmount } from './format.js';
+import { clampCooldown } from './exclusion.js';
 
 // Settings live in chrome.storage.sync (tiny, and worth following you between
 // machines). The rate cache lives in storage.local — see rates.js — because it
@@ -93,6 +94,39 @@ export const DEFAULTS = {
   // The fourth limit, and the only one not measured in money: minutes since the
   // session opened. Time is what people actually lose track of.
   limitMinutes: null,
+
+  // ------------------------------------------------------- pre-commitment
+  //
+  // The three places this extension intervenes rather than reports. All three
+  // are off by default and each is switched on separately, because a tool that
+  // started blocking things after an update would be a different tool from the
+  // one that was installed. See lib/exclusion.js for the rules and DISCLAIMER.md
+  // for why the posture changed at all.
+
+  // Self-exclusion: block the casinos outright for a chosen period.
+  //
+  // Kept in sync storage with everything else, and that placement is the
+  // feature rather than a detail — an exclusion set on the desktop should be
+  // waiting on the laptop. It does mean a profile with Chrome sync off is
+  // excluded on one machine only, which the options page says out loud.
+  selfExclusion: false,
+
+  // When the current exclusion ends, epoch ms, and when it began. null = none.
+  // Only ever moved later; lib/exclusion.js refuses every other edit.
+  exclusionUntil: null,
+  exclusionStarted: null,
+
+  // A forced pause on the first crossing of each session limit, rather than a
+  // notice that can be dismissed without breaking stride. The moment a loss
+  // limit is crossed is the moment attention is worth the most and is given the
+  // least.
+  cooldownScreen: false,
+  cooldownSeconds: 30,
+
+  // Refuse to loosen a session limit while a session is live. Tightening one is
+  // always allowed, and between sessions everything is editable — that is when
+  // the choosing is meant to happen.
+  lockLimits: false,
 
   // Rate alerts: a desktop notice when the effective USDT rate crosses a line,
   // in target-currency units per USDT. Fires on the crossing, not while the
@@ -422,6 +456,18 @@ export function sanitize(patch) {
   if ('feePercent' in out) {
     const n = Number(out.feePercent);
     out.feePercent = Number.isFinite(n) ? Math.min(50, Math.max(-50, n)) : 0;
+  }
+  if ('cooldownSeconds' in out) {
+    out.cooldownSeconds = clampCooldown(out.cooldownSeconds);
+  }
+  // An exclusion is a timestamp, and junk in this field has to read as "no
+  // exclusion" rather than as an exclusion that never ends. Nothing here decides
+  // whether the write is *permitted* — that is patchAllowed in exclusion.js, and
+  // it runs before this does.
+  for (const field of ['exclusionUntil', 'exclusionStarted']) {
+    if (!(field in out)) continue;
+    const n = Number(out[field]);
+    out[field] = Number.isFinite(n) && n > 0 ? Math.round(n) : null;
   }
   // Blank clears a limit; anything at or below zero is not a limit.
   //

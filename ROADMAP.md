@@ -104,7 +104,7 @@ desktop notice per session. *"Your average stake has tripled since you went down
 and it must not fire twice for the same escalation. This is a statement about the reader's
 behaviour, so a false positive costs more credibility than a missed one costs safety.
 
-### 2.2 Pre-commitment budget
+### 2.2 Pre-commitment budget ✅ DONE
 
 **The gap.** The four limits are global settings, editable at any moment — including mid-session,
 which is exactly when they get raised.
@@ -118,7 +118,7 @@ locked while that session is live. The extension still blocks nothing on the cas
 to raise *its own* limit until the session closes, or delays the increase. That distinction keeps
 the project's posture intact.
 
-### 2.3 Cooldown screen
+### 2.3 Cooldown screen ✅ DONE
 
 **The gap.** A crossed limit produces a desktop notice and an overlay flag, both dismissible
 without breaking stride.
@@ -129,9 +129,9 @@ and is given the least.
 **Shape of the work.** A full-viewport overlay in the extension's own shadow root, with a short
 forced pause before it can be dismissed. It stops no bet and touches nothing of the casino's.
 
-**This one is a decision, not an oversight.** The README commits to *reports, does not
-intervene*, and a mandatory pause is the first thing that bends that. Worth choosing
-deliberately, and worth being a setting rather than a default if it ships.
+**This one was a decision, not an oversight**, and it was taken: the pause ships as a setting
+that is off by default, alongside locked limits and self-exclusion. *Reports, does not intervene*
+now describes the default rather than the whole tool, and `DISCLAIMER.md` says so.
 
 ---
 

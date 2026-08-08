@@ -401,6 +401,37 @@
     /* Hitting a win target is not a warning, so it does not read like one. */
     .limit-alert.win { background: rgba(0,231,1,.1); border-color: rgba(0,231,1,.45); color: #9df0a8; }
 
+    /* The cooldown pause. Covers the viewport from inside the shadow root, so
+       the casino's own DOM is untouched and nothing it holds a reference to
+       moves — the same reason everything else here lives in here.
+
+       Deliberately plain. This is the one surface whose job is to be read
+       rather than glanced at, and an animated one would be watched instead. */
+    .cooldown {
+      position: fixed; inset: 0; z-index: 2147483647;
+      display: grid; place-items: center;
+      background: rgba(9,11,14,.92);
+      backdrop-filter: blur(3px);
+    }
+    .cooldown-card {
+      max-width: 34rem; margin: 24px; padding: 26px 28px;
+      border: 1px solid rgba(255,255,255,.12); border-radius: 14px;
+      background: #14161a; color: #e7e9ee; text-align: center;
+      font: 14px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      box-shadow: 0 24px 60px rgba(0,0,0,.5);
+    }
+    .cooldown-title { margin: 0 0 10px; font-size: 19px; font-weight: 600; }
+    .cooldown-text { margin: 0 0 20px; color: #9aa1ad; }
+    .cooldown-card button {
+      min-width: 8rem; padding: 9px 18px;
+      border: 1px solid rgba(255,255,255,.16); border-radius: 9px;
+      background: #1d2229; color: inherit; font: inherit; font-weight: 600;
+      cursor: pointer; font-variant-numeric: tabular-nums;
+    }
+    /* Dimmed rather than hidden while it counts down: a button that appears
+       from nowhere gets clicked by whatever the cursor was already doing. */
+    .cooldown-card button:disabled { opacity: .45; cursor: default; }
+
     .diag {
       margin-top: 8px; padding: 7px 9px; border-radius: 8px;
       background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.45); color: #f7cf8a;
@@ -1016,6 +1047,91 @@
     alert.textContent = crossed.map((c) => c.text).join(' · ');
     // Red unless the only thing crossed was the win target.
     alert.className = 'limit-alert' + (crossed.length && crossed.every((c) => c.kind === 'win') ? ' win' : '');
+
+    guard('cooldown', () => maybeCooldown(crossed, settings, s));
+  }
+
+  // ------------------------------------------------------------- cooldown
+  //
+  // The forced pause on a crossed limit. It is the smallest of the three
+  // pre-commitment features and the only one that interrupts play rather than
+  // preventing it, so everything about it is scoped to being brief: one per
+  // limit per session, a countdown that finishes on its own, and no way for it
+  // to reappear once sat through.
+
+  /** Which limits have already produced a pause, and for which session. */
+  let acknowledged = new Set();
+  let acknowledgedFor = null;
+  let cooldownEl = null;
+
+  function maybeCooldown(crossed, settings, session) {
+    // A new session starts with a clean slate; the same one keeps what it has
+    // already interrupted. Keyed on the start time rather than a counter,
+    // because the tab may have missed the changeover entirely.
+    if (acknowledgedFor !== session.startedAt) {
+      acknowledgedFor = session.startedAt;
+      acknowledged = new Set();
+    }
+
+    // The same rule as cooldownFor() in lib/exclusion.js, spelled out here
+    // because this file is not a module and cannot import it. It stays
+    // equivalent without a clamp of its own: cooldownSeconds is clamped by
+    // sanitize() on the way into storage, so what arrives here is already
+    // between 5 and 600.
+    if (!settings.cooldownScreen || cooldownEl) return;
+
+    const limit = crossed.map((c) => c.kind).find((kind) => !acknowledged.has(kind));
+    if (!limit) return;
+
+    const ms = (Number(settings.cooldownSeconds) || 30) * 1000;
+
+    // Marked as seen when it opens rather than when it is dismissed. A pause
+    // that reopened because the tab was reloaded mid-countdown would be a
+    // punishment for reloading, which is not what this is for.
+    acknowledged.add(limit);
+    showCooldown(crossed.find((c) => c.kind === limit)?.text || '', ms);
+  }
+
+  function showCooldown(text, ms) {
+    if (!shadow) return;
+
+    cooldownEl = document.createElement('div');
+    cooldownEl.className = 'cooldown';
+    cooldownEl.innerHTML = `
+      <div class="cooldown-card">
+        <p class="cooldown-title"></p>
+        <p class="cooldown-text"></p>
+        <button type="button" disabled></button>
+      </div>`;
+
+    cooldownEl.querySelector('.cooldown-title').textContent =
+      t('cdTitle', 'You set a limit, and it just went past');
+    cooldownEl.querySelector('.cooldown-text').textContent = text;
+
+    const button = cooldownEl.querySelector('button');
+    const until = Date.now() + ms;
+
+    const tick = () => {
+      const left = Math.ceil((until - Date.now()) / 1000);
+      if (left > 0) {
+        button.textContent = t('cdWait', `${left}s`, [String(left)]);
+        return;
+      }
+      clearInterval(timer);
+      button.disabled = false;
+      button.textContent = t('cdDismiss', 'Continue');
+    };
+
+    const timer = setInterval(tick, 250);
+    tick();
+
+    button.addEventListener('click', () => {
+      clearInterval(timer);
+      cooldownEl?.remove();
+      cooldownEl = null;
+    });
+
+    shadow.appendChild(cooldownEl);
   }
 
   function renderDiagnostics() {
@@ -1873,17 +1989,47 @@
     refreshAccount();
   }
 
+  /**
+   * Leave, if a self-exclusion is running.
+   *
+   * The network rule in the service worker refuses *navigations* to a casino,
+   * which covers every way of arriving at one but not the tab that was already
+   * open when the exclusion started. Without this, setting an exclusion mid-play
+   * would block tomorrow and change nothing about the tab in front of you.
+   *
+   * Navigating rather than drawing a cover over the page, and that is the point:
+   * a cover leaves the casino loaded underneath it, still holding a session,
+   * still showing a balance, one devtools node-delete away from being back. The
+   * same page the network rule redirects to is the honest destination.
+   */
+  function leaveIfExcluded(state) {
+    const until = Number(state?.settings?.exclusionUntil);
+    if (!Number.isFinite(until) || until <= Date.now()) return false;
+
+    shutdown();
+    location.replace(chrome.runtime.getURL('src/blocked.html'));
+    return true;
+  }
+
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
     if (changes.i18n) guard('apply language', () => relocalise(changes.i18n.newValue));
-    if (changes.mirror) guard('apply state', () => applyState(changes.mirror.newValue));
+    if (changes.mirror) {
+      // Checked before applyState, so an exclusion that begins while a tab is
+      // open does not get one more render of the session first.
+      if (guard('check exclusion', () => leaveIfExcluded(changes.mirror.newValue))) return;
+      guard('apply state', () => applyState(changes.mirror.newValue));
+    }
     if (changes.rakebackPing) guard('refresh account', () => onAccountPing(changes.rakebackPing.newValue));
   });
 
   try {
     chrome.storage.local.get(['mirror', 'i18n']).then(({ mirror, i18n }) => {
       applyBundle(i18n);
-      if (mirror) return guard('apply state', () => applyState(mirror));
+      if (mirror) {
+        if (guard('check exclusion', () => leaveIfExcluded(mirror))) return undefined;
+        return guard('apply state', () => applyState(mirror));
+      }
       // First run after install: the mirror may not be written yet.
       chrome.runtime.sendMessage({ type: 'getState' }).then(applyState).catch(() => {});
     }).catch(() => {});

@@ -1,0 +1,46 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Blocked</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="blocked.css">
+
+<!--
+  Shown in place of a casino while a self-exclusion is running. Its own
+  stylesheet rather than ui.css: this is a full page standing in for a site,
+  not a panel inside the extension's chrome, and it should not inherit a
+  popup's proportions.
+
+  There is deliberately no control on this page. Ending an exclusion early is
+  not offered anywhere, so offering it here — at the exact moment somebody
+  wants it — would be the worst possible place to put it.
+-->
+
+<main>
+  <p class="mark" aria-hidden="true">⏸</p>
+
+  <h1 id="title">You asked to be kept out</h1>
+
+  <p class="lead">
+    You set a self-exclusion, and it has not finished yet.
+  </p>
+
+  <p class="until">
+    <span id="remaining">…</span>
+    <span class="date" id="until"></span>
+  </p>
+
+  <p class="note" id="honest">
+    This block is friction, not a wall. Removing this extension removes it, and it cannot close
+    your account or stop you playing elsewhere. If you want something that actually holds, ask
+    the casino for their own self-exclusion — theirs can shut the account.
+  </p>
+
+  <p class="help">
+    <a id="help-link" href="https://www.gamblingtherapy.org" target="_blank" rel="noopener noreferrer">
+      Gambling Therapy
+    </a>
+    <span id="help-note">is free, confidential and international.</span>
+  </p>
+</main>
+
+<script type="module" src="blocked.js"></script>

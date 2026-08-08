@@ -1526,5 +1526,138 @@
         "example": "3.48"
       }
     }
+  },
+  "optPrecommit": {
+    "message": "Pre-commitment"
+  },
+  "optPrecommitIntro": {
+    "message": "The three places this extension stops reporting and starts intervening. All three are off by default, because a tool that began blocking things after an update would not be the tool you installed."
+  },
+  "optPrecommitHonest": {
+    "message": "None of this can be enforced. Chrome removes an extension in two clicks and takes its settings with it, and nothing here can close an account or reach a casino you open on another device. This raises the cost of a decision; it is not a wall. If you need one that holds, ask the casino for their own self-exclusion — theirs can shut the account."
+  },
+  "optLockLimits": {
+    "message": "Lock limits during a session"
+  },
+  "optLockLimitsSub": {
+    "message": "While a session is running, a limit can be tightened but not raised or switched off. Between sessions everything is editable — that is when the choosing is meant to happen."
+  },
+  "optCooldown": {
+    "message": "Cooldown screen"
+  },
+  "optCooldownSub": {
+    "message": "The first time a session crosses each limit, hold the page for a moment before it can be dismissed. Once per limit, not once per bet."
+  },
+  "optCooldownSecs": {
+    "message": "Pause length (seconds)"
+  },
+  "optCooldownSecsSub": {
+    "message": "Between 5 and 600."
+  },
+  "optExclusion": {
+    "message": "Self-exclusion"
+  },
+  "optExclusionSub": {
+    "message": "Blocks every casino this extension knows about for a period you choose. Arriving at one lands on an explanation instead, and a tab already open leaves. There is no way to end it early — not here, not anywhere in the extension. Choose accordingly."
+  },
+  "optExclusionFor": {
+    "message": "Exclude me for"
+  },
+  "optExclusionForSub": {
+    "message": "Set once. It can be extended later, never shortened."
+  },
+  "optExclusionStart": {
+    "message": "Start"
+  },
+  "optExclusionExtend": {
+    "message": "Extend"
+  },
+  "optExclusionActive": {
+    "message": "Currently excluded"
+  },
+  "optExclusionLeft": {
+    "message": "$LEFT$ left — until $DATE$",
+    "placeholders": {
+      "left": {
+        "content": "$1",
+        "example": "6 days"
+      },
+      "date": {
+        "content": "$2",
+        "example": "Tuesday, 12 August 2026 at 21:04"
+      }
+    }
+  },
+  "optExclDays": {
+    "message": "$DAYS$ days",
+    "placeholders": {
+      "days": {
+        "content": "$1",
+        "example": "7"
+      }
+    }
+  },
+  "optExclYear": {
+    "message": "a year"
+  },
+  "optExclConfirm": {
+    "message": "Block every casino for $PERIOD$? There is no way to end this early — you would have to remove the extension.",
+    "placeholders": {
+      "period": {
+        "content": "$1",
+        "example": "7 days"
+      }
+    }
+  },
+  "optExclConfirmExtend": {
+    "message": "Extend your self-exclusion to $PERIOD$ from now? It still cannot be ended early.",
+    "placeholders": {
+      "period": {
+        "content": "$1",
+        "example": "30 days"
+      }
+    }
+  },
+  "statusExcluded": {
+    "message": "That is locked until your self-exclusion ends."
+  },
+  "statusLimitLocked": {
+    "message": "Limits are locked while a session is running. Tighten one, or end the session."
+  },
+  "statusExclStarted": {
+    "message": "Self-exclusion started."
+  },
+  "statusExclRefused": {
+    "message": "That would end sooner than the exclusion already running."
+  },
+  "blkOverTitle": {
+    "message": "That has finished"
+  },
+  "blkOver": {
+    "message": "Your self-exclusion has ended."
+  },
+  "blkUntil": {
+    "message": "until $DATE$",
+    "placeholders": {
+      "date": {
+        "content": "$1",
+        "example": "Tuesday, 12 August 2026 at 21:04"
+      }
+    }
+  },
+  "cdTitle": {
+    "message": "You set a limit, and it just went past"
+  },
+  "cdWait": {
+    "message": "$SECONDS$s",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "30"
+      }
+    }
+  },
+  "cdDismiss": {
+    "message": "Continue"
   }
 }

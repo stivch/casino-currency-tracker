@@ -537,6 +537,26 @@ button.wide#reset:hover {
 }
 .toast.show { opacity: 1; transform: translateX(-50%); }
 
+/* A refused save is not a confirmation, and it is the only explanation the user
+   gets for a control that sprang back — so it is coloured and it stays longer.
+   Not centred as a pill either: it carries a sentence rather than one word. */
+.toast.bad {
+  border-color: var(--bad);
+  color: var(--bad);
+  border-radius: 12px;
+  font-weight: 500;
+  text-align: left;
+}
+
+/* The one irreversible control in this extension. Red so that it does not look
+   like the twenty toggles above it, which all mean "and back again". */
+button.danger {
+  border-color: #6a2b2b;
+  background: #3a1d1d;
+  color: #ffb4ae;
+}
+button.danger:hover:not(:disabled) { background: #4a2323; border-color: #853636; }
+
 /* A pill, so it reads as a state that arrived rather than as text that was
    always there and happened to fade in. */
 .saved {

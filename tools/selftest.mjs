@@ -12,6 +12,7 @@ import {
 import { fetchRate, pingKey, ratesFromDuel, ratesFromStake } from '../src/lib/rates.js';
 import { DEFAULTS, OVERLAY_FIELDS, TARGET_CURRENCIES, overlayWindowSize, sanitize } from '../src/lib/settings.js';
 import { downsample, plotSeries } from '../src/lib/chart.js';
+import { beginExclusion, clampCooldown, cooldownFor, isExcluded, limitEditAllowed, lockedKeys, loosensLimit, patchAllowed, remainingParts } from '../src/lib/exclusion.js';
 import { applyBalance, applyFunds, archiveEntry, chaseStatus, costReport, emptySession, fiscalYearOf, gamesOf, ingest, isStale, limitStatus, pushCurve, realisedRtp, reconcile, restate, rollSession, sessionProfit, summarise, winRate } from '../src/lib/session.js';
 
 let failures = 0;
@@ -1302,9 +1303,30 @@ console.log('\n-- supported domains');
       return !OPTIONAL_DOMAINS.some((e) => e.host === host);
     }), []);
 
+  // Self-exclusion redirects the navigation rather than blocking it dead, and a
+  // redirect needs host access to the request and the target both. A domain the
+  // content script covers but the block cannot redirect would be a casino that
+  // stayed reachable during an exclusion — the one failure this feature cannot
+  // afford, and the one nothing on screen would reveal.
+  const hostPerms = new Set(manifest.host_permissions || []);
+  check('every built-in domain is redirectable during an exclusion',
+    builtIn.filter((host) => !hostPerms.has(`https://${host}/*`) || !hostPerms.has(`https://*.${host}/*`)), []);
+  check('the block rule needs its permission', manifest.permissions.includes('declarativeNetRequest'), true);
+
+  // And the page it redirects to has to be reachable from the casino's origin,
+  // or the redirect lands on a blocked resource and the tab shows an error.
+  const war = manifest.web_accessible_resources || [];
+  const blockedEntry = war.find((e) => (e.resources || []).includes('src/blocked.html'));
+  check('the blocked page ships as a web-accessible resource', Boolean(blockedEntry), true);
+  check('and is reachable from every built-in domain',
+    builtIn.filter((host) => {
+      const m = new Set(blockedEntry?.matches || []);
+      return !m.has(`https://${host}/*`) || !m.has(`https://*.${host}/*`);
+    }), []);
+
   // The one that would undo all of it.
   check('no manifest permission is a bare wildcard host',
-    [...optional, ...matchesIn].filter((p) => /^https:\/\/\*\/|^<all_urls>/.test(p)), []);
+    [...optional, ...matchesIn, ...hostPerms].filter((p) => /^https:\/\/\*\/|^<all_urls>/.test(p)), []);
 
   check('sanitize cleans the list on the way in',
     sanitize({ mirrors: [{ host: 'evil.test', site: 'duel' }] }).mirrors, []);
@@ -1388,6 +1410,138 @@ console.log('\n-- i18n');
   check('so Intl names currencies in English',
     new Intl.DisplayNames([activeLanguage()], { type: 'currency' }).of('ILS'),
     'Israeli New Shekel');
+}
+
+console.log('\n-- self-exclusion, cooldown and locked limits');
+{
+  const HOUR = 3600_000;
+  const t0 = 1_700_000_000_000;
+
+  // Reads never mutate and never expire anything: a popup that rendered twice
+  // must not be able to end an exclusion.
+  check('no record is not excluded', isExcluded({}, t0), false);
+  check('a past record is not excluded',
+    isExcluded({ exclusionUntil: t0 - 1 }, t0), false);
+  check('the instant it ends, it has ended', isExcluded({ exclusionUntil: t0 }, t0), false);
+  check('a future record is excluded', isExcluded({ exclusionUntil: t0 + 1 }, t0), true);
+  check('junk is not an exclusion that never ends',
+    isExcluded({ exclusionUntil: 'forever' }, t0), false);
+
+  const week = beginExclusion({}, '7d', t0);
+  check('a period starts one', week.exclusionUntil, t0 + 24 * 7 * HOUR);
+  check('and records when it began', week.exclusionStarted, t0);
+  // Using it is consent to it; the toggle is not the way out, and lockedKeys
+  // freezes it below.
+  check('and switches the feature on', week.selfExclusion, true);
+  check('an unknown period does nothing', beginExclusion({}, '5m', t0), null);
+
+  // The one edit a live exclusion accepts. Shortening is the escape hatch this
+  // feature exists to not have.
+  const live = { ...week, exclusionStarted: t0 };
+  check('extending is allowed',
+    beginExclusion(live, '30d', t0 + HOUR).exclusionUntil, t0 + HOUR + 24 * 30 * HOUR);
+  check('and keeps the original start', beginExclusion(live, '30d', t0 + HOUR).exclusionStarted, t0);
+  check('shortening is refused', beginExclusion(live, '1d', t0 + HOUR), null);
+  // Re-applying the same period an hour in is measured from now, so it lands an
+  // hour later than the one running — an extension, and allowed as one.
+  check('re-applying the same period extends rather than restarts',
+    beginExclusion(live, '7d', t0 + HOUR).exclusionUntil, t0 + HOUR + 24 * 7 * HOUR);
+
+  // The whole point: while excluded, none of the ways out are writable.
+  const locked = lockedKeys(live, t0 + HOUR);
+  check('the exclusion itself locks', locked.has('exclusionUntil'), true);
+  check('so does its own switch', locked.has('selfExclusion'), true);
+  // A domain removed from the mirror list is a domain the block stops covering.
+  check('and the domain list', locked.has('mirrors'), true);
+  check('nothing locks when not excluded', lockedKeys({}, t0).size, 0);
+
+  // The hole the switches would otherwise be. Refusing to raise a loss limit
+  // mid-session achieves nothing if the switch enforcing it can be flicked off
+  // first, so both interventions freeze for as long as they are doing anything.
+  const armed = { lockLimits: true, cooldownScreen: true };
+  check('the limit lock cannot be switched off mid-session',
+    lockedKeys(armed, t0, { sessionLive: true }).has('lockLimits'), true);
+  check('nor the cooldown, which would skip the pause',
+    lockedKeys(armed, t0, { sessionLive: true }).has('cooldownScreen'), true);
+  check('and between sessions both are free',
+    lockedKeys(armed, t0, { sessionLive: false }).size, 0);
+  check('a switch that is already off does not lock on',
+    lockedKeys({ lockLimits: false }, t0, { sessionLive: true }).size, 0);
+  check('the refusal reaches patchAllowed too',
+    patchAllowed(armed, { lockLimits: false }, t0, { sessionLive: true }).allowed, false);
+  check('and names the switch rather than the limit',
+    patchAllowed(armed, { lockLimits: false }, t0, { sessionLive: true }).key, 'lockLimits');
+  check('turning it off between sessions is fine',
+    patchAllowed(armed, { lockLimits: false }, t0, { sessionLive: false }).allowed, true);
+
+  const at = t0 + HOUR;
+  check('switching the feature off is refused',
+    patchAllowed(live, { selfExclusion: false }, at).allowed, false);
+  check('and says which key, so the UI can explain itself',
+    patchAllowed(live, { selfExclusion: false }, at).key, 'selfExclusion');
+  check('clearing the date is refused',
+    patchAllowed(live, { exclusionUntil: null }, at).allowed, false);
+  check('winding it back is refused',
+    patchAllowed(live, { exclusionUntil: t0 + HOUR }, at).allowed, false);
+  check('a date inside the one running is still winding it back',
+    patchAllowed(live, { exclusionUntil: t0 + 99 * HOUR }, at).allowed, false);
+  check('pushing it past the end is allowed',
+    patchAllowed(live, { exclusionUntil: t0 + 999 * HOUR }, at).allowed, true);
+  // Options pages post whole forms; refusing an unchanged value would make an
+  // unrelated save fail for no reason the user could see.
+  check('an unrelated setting still saves',
+    patchAllowed(live, { decimals: 4 }, at).allowed, true);
+  check('and so does a locked key written its own value',
+    patchAllowed(live, { selfExclusion: true }, at).allowed, true);
+  check('including one compared by value, not identity',
+    patchAllowed({ ...live, mirrors: [] }, { mirrors: [] }, at).allowed, true);
+
+  // Locked limits. Tightening is the player doing the right thing.
+  const lim = { lockLimits: true, limitLoss: 100, limitMinutes: 60, limitWin: null };
+  check('loosening is refused mid-session',
+    limitEditAllowed(lim, { limitLoss: 200 }, { sessionLive: true }).allowed, false);
+  check('tightening is allowed',
+    limitEditAllowed(lim, { limitLoss: 50 }, { sessionLive: true }).allowed, true);
+  // null is the loosest value there is — it means off.
+  check('switching a limit off is loosening',
+    limitEditAllowed(lim, { limitLoss: null }, { sessionLive: true }).allowed, false);
+  check('switching one on is not',
+    limitEditAllowed(lim, { limitWin: 500 }, { sessionLive: true }).allowed, true);
+  check('a higher win target is playing on, so it counts as loosening',
+    loosensLimit({ limitWin: 100 }, { limitWin: 300 }), 'limitWin');
+  check('between sessions everything is editable',
+    limitEditAllowed(lim, { limitLoss: null }, { sessionLive: false }).allowed, true);
+  check('and the rule does nothing when it is switched off',
+    limitEditAllowed({ ...lim, lockLimits: false }, { limitLoss: 900 }, { sessionLive: true }).allowed, true);
+
+  // The cooldown fires once per limit. A pause that fires every few seconds is
+  // a pause that gets dismissed reflexively.
+  const cd = { cooldownScreen: true, cooldownSeconds: 30 };
+  check('off by default does nothing',
+    cooldownFor({}, { crossed: ['loss'] }).ms, 0);
+  check('a fresh crossing pauses', cooldownFor(cd, { crossed: ['loss'] }), { limit: 'loss', ms: 30_000 });
+  check('the same one again does not',
+    cooldownFor(cd, { crossed: ['loss'], acknowledged: ['loss'] }).limit, null);
+  check('but a different limit does',
+    cooldownFor(cd, { crossed: ['loss', 'time'], acknowledged: ['loss'] }).limit, 'time');
+  check('a pause is clamped to something that is still a pause', clampCooldown(1), 5);
+  check('and to something that is not a punishment', clampCooldown(9999), 600);
+  check('junk falls back to the default', clampCooldown('soon'), 30);
+
+  // Coarse on purpose: a countdown to the second turns an exclusion into a
+  // thing to watch, which is the state it is interrupting.
+  check('days round to the nearest', remainingParts(30 * 24 * HOUR), { unit: 'days', value: 30 });
+  check('and round up past the half day', remainingParts(2 * 24 * HOUR + 13 * HOUR), { unit: 'days', value: 3 });
+  check('under a day reads in hours', remainingParts(5 * HOUR), { unit: 'hours', value: 5 });
+  check('under an hour reads in minutes', remainingParts(10 * 60_000), { unit: 'minutes', value: 10 });
+  // Never "0 minutes left" while still locked out.
+  check('and never counts down to nothing while it holds', remainingParts(1), { unit: 'minutes', value: 1 });
+
+  check('the shipped defaults intervene in nothing',
+    [DEFAULTS.selfExclusion, DEFAULTS.cooldownScreen, DEFAULTS.lockLimits], [false, false, false]);
+  check('and carry no exclusion', DEFAULTS.exclusionUntil, null);
+  check('sanitize clamps the pause', sanitize({ cooldownSeconds: 2 }).cooldownSeconds, 5);
+  check('and refuses a nonsense date', sanitize({ exclusionUntil: 'never' }).exclusionUntil, null);
 }
 
 console.log('\n-- live providers');

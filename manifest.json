@@ -6,11 +6,27 @@
   "default_locale": "en",
   "minimum_chrome_version": "111",
 
-  "permissions": ["storage", "alarms", "notifications", "scripting"],
+  "permissions": ["storage", "alarms", "notifications", "scripting", "declarativeNetRequest"],
 
   "host_permissions": [
     "https://api.coingecko.com/*",
-    "https://open.er-api.com/*"
+    "https://open.er-api.com/*",
+    "https://stake.com/*",
+    "https://*.stake.com/*",
+    "https://stake.bet/*",
+    "https://*.stake.bet/*",
+    "https://stake.games/*",
+    "https://*.stake.games/*",
+    "https://stake.us/*",
+    "https://*.stake.us/*",
+    "https://duel.com/*",
+    "https://*.duel.com/*",
+    "https://duel.limited/*",
+    "https://*.duel.limited/*",
+    "https://duel.vip/*",
+    "https://*.duel.vip/*",
+    "https://duel.net/*",
+    "https://*.duel.net/*"
   ],
 
   "optional_host_permissions": [],
@@ -85,6 +101,30 @@
       "js": ["src/lib/scrape.js", "src/content.js"],
       "run_at": "document_idle",
       "all_frames": false
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["src/blocked.html"],
+      "matches": [
+        "https://stake.com/*",
+        "https://*.stake.com/*",
+        "https://stake.bet/*",
+        "https://*.stake.bet/*",
+        "https://stake.games/*",
+        "https://*.stake.games/*",
+        "https://stake.us/*",
+        "https://*.stake.us/*",
+        "https://duel.com/*",
+        "https://*.duel.com/*",
+        "https://duel.limited/*",
+        "https://*.duel.limited/*",
+        "https://duel.vip/*",
+        "https://*.duel.vip/*",
+        "https://duel.net/*",
+        "https://*.duel.net/*"
+      ]
     }
   ]
 }
