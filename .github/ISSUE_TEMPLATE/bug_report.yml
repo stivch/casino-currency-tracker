@@ -1,0 +1,101 @@
+name: Bug report
+description: A number that is wrong, a reader that stopped working, something that crashed.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Redact before you paste.** Never include your account identifier, an `authorization`
+        header, a session cookie, a balance dump, or a raw bet ledger. Replace figures with
+        plausible fake ones — the shape is what matters, not your numbers.
+
+        Security problems do not belong here. Use private reporting: **Security** tab →
+        **Report a vulnerability**.
+
+  - type: input
+    id: version
+    attributes:
+      label: Extension version
+      description: From `chrome://extensions`, or the `version` field in `manifest.json`.
+      placeholder: "1.5.0"
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: "Chrome 131 on Windows 11"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: site
+    attributes:
+      label: Where does it happen?
+      options:
+        - Stake
+        - Duel
+        - The popup (not on a casino site)
+        - The options page
+        - The streamer overlay
+        - Somewhere else / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What the extension showed, and what the page showed instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Stake with a session running
+        2. Play a round of ...
+        3. The overlay shows ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics panel
+      description: >
+        Options → Diagnostics. Paste it here, with anything account-identifying removed. This is
+        usually the single most useful thing in the report.
+      render: text
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console errors
+      description: >
+        Anything red in DevTools on the casino tab, and in the service worker console
+        (`chrome://extensions` → this extension → *service worker*).
+      render: text
+
+  - type: checkboxes
+    id: settings
+    attributes:
+      label: Relevant settings
+      options:
+        - label: "*Track session P/L* is on"
+        - label: "*Use the casino's own price table* is on"
+        - label: "*Read rakeback and VIP progress* is on"
+        - label: I am using my own CoinGecko API key
+
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues.
+          required: true
+        - label: I removed every account identifier, credential, and real balance from this report.
+          required: true

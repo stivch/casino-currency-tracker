@@ -1,0 +1,80 @@
+name: Site change / reader broken
+description: Stake or Duel changed something and a reader stopped working.
+labels: ["bug", "site-change"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Both sites ship compiled markup and change it without notice. This is the most common
+        way the extension breaks, and it is the report that fixes it fastest.
+
+        **Redact before you paste.** No account identifier, no `authorization` header, no session
+        cookie, no real balances, no raw bet ledger. Replace figures with plausible fake ones.
+
+  - type: dropdown
+    id: site
+    attributes:
+      label: Which site?
+      options:
+        - Stake
+        - Duel
+        - A mirror domain
+    validations:
+      required: true
+
+  - type: input
+    id: host
+    attributes:
+      label: Hostname
+      placeholder: "stake.com"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reader
+    attributes:
+      label: Which reader stopped?
+      multiple: true
+      options:
+        - Amounts on the page (conversion / overlay)
+        - Bet ledger (session P/L)
+        - The casino's own price table
+        - Wallet balance
+        - Wallet coin
+        - Rakeback
+        - VIP progress
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Extension version
+      placeholder: "1.5.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: What the page looks like now
+      description: >
+        The markup around the element that is no longer found, or the response shape that no
+        longer matches — whichever is relevant. Trim it to the smallest fragment that shows the
+        structure, and scrub every real value out of it.
+      render: text
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics panel
+      description: Options → Diagnostics, with anything account-identifying removed.
+      render: text
+
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed every account identifier, credential, and real balance from this report.
+          required: true

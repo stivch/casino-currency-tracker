@@ -1,0 +1,64 @@
+name: Feature request
+description: Something the extension should do and does not.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        `ROADMAP.md` and `PLAN.md` already hold a queue of planned work — worth a look first, in
+        case yours is on it.
+
+        Some things are settled positions rather than open questions: no telemetry, no server,
+        nothing that acts on your behalf or touches funds, nothing that reads other players'
+        data, no bundled dependencies. The **Boundaries** section of `CONTRIBUTING.md` has the
+        full list.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is the problem?
+      description: Describe the situation you are in, not the solution you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should it do instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface?
+      multiple: true
+      options:
+        - The on-page overlay
+        - The toolbar popup
+        - The toolbar badge
+        - The options page
+        - Reports and history
+        - The streamer overlay
+        - Exports
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What have you tried, or what else would work?
+      description: Existing settings, other tools, doing it by hand.
+
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Boundaries
+      options:
+        - label: This needs no new network host, no telemetry, and no server.
+          required: true
+        - label: This does not act on my behalf, place or cancel a bet, or touch funds.
+          required: true
+        - label: This does not read any other player's data.
+          required: true

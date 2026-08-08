@@ -1,2 +1,9 @@
 .claude/settings.local.json
 dist/
+
+# Captures taken off a live account. These carry a real user id and real
+# balances, so nothing matching them is ever committed — test fixtures are
+# synthetic and live inside the test files.
+*_example.json
+*.capture.json
+*.har

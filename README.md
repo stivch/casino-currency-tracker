@@ -4,6 +4,11 @@ A Chrome extension that shows casino amounts in your own currency at a live rate
 forty-five fiats, shekels by default. Works on **Stake** and on **Duel**. No account, no API
 key, no build step.
 
+> An independent, unofficial tool. Not affiliated with Stake, Duel, or any casino. It reports; it
+> does not intervene, and it cannot touch funds. Using a third-party tool on a casino site may
+> breach that operator's terms, and that risk lands on your account — read
+> **[DISCLAIMER.md](DISCLAIMER.md)** before installing.
+
 ## Install
 
 1. Open `chrome://extensions`
@@ -851,3 +856,19 @@ to look.
   `[hidden] { display: none !important }` kept the chart invisible from the day it was written.
   Both charts now use `toggleAttribute`. What is still unverified is any of it inside a real
   Chrome extension rather than a page pretending to be one.
+
+## Legal, privacy and policies
+
+| | |
+|---|---|
+| [DISCLAIMER.md](DISCLAIMER.md) | No affiliation, trademarks, adults only, the operator's terms of service, and why nothing here is financial or tax advice. Read this one. |
+| [PRIVACY.md](PRIVACY.md) | What is stored, where, and the two hosts anything is ever sent to. |
+| [NOTICE.md](NOTICE.md) | Provider attribution and terms — CoinGecko and exchangerate-api — and the fact that nothing third-party is bundled. |
+| [SECURITY.md](SECURITY.md) | How to report a vulnerability privately, and which invariants matter most. |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, tests, and the design positions that are settled. |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | How to behave in the issue tracker. |
+| [LICENSE](LICENSE) | MIT, with the warranty disclaimer the limits lean on. |
+
+If gambling has stopped being entertainment, [Gambling Therapy](https://www.gamblingtherapy.org)
+is free, confidential and international. This extension shows you the numbers; it does not stop
+anything, and it was never built to.

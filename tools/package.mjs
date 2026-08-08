@@ -6,7 +6,10 @@
 // zlib's raw deflate, which node ships with.
 //
 // Only what the extension needs at runtime goes in — manifest, source,
-// locales, icons, licence. Tools, plans and the README are for the repo.
+// locales, icons — plus the three documents that have to travel with a copy
+// rather than sit in a repository the recipient may never see: the licence,
+// the provider attribution both free tiers ask for, and the disclaimer.
+// Tools, plans and the README are for the repo.
 
 import { deflateRawSync } from 'node:zlib';
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
@@ -15,7 +18,10 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-const INCLUDE = ['manifest.json', 'LICENSE', '_locales', 'icons', 'src'];
+const INCLUDE = [
+  'manifest.json', 'LICENSE', 'NOTICE.md', 'DISCLAIMER.md', 'PRIVACY.md',
+  '_locales', 'icons', 'src',
+];
 
 function* walk(path) {
   if (statSync(path).isDirectory()) {

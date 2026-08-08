@@ -3,12 +3,20 @@
 # selftest.mjs talks to the live rate providers, which is the point of it —
 # but a provider outage should not read as a broken commit, so it retries
 # once before failing the run.
+#
+# The default token is read-only for the whole workflow; only the release job
+# widens it, and only to write the release it attaches the zip to. On a public
+# repository the test job runs against pull requests from strangers, so it must
+# never hold a token that can write anything.
 
 name: CI
 
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   test:
