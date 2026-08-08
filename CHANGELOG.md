@@ -3,7 +3,7 @@
 The version in `manifest.json` is the single source of truth; a release is a
 `v<version>` tag, and CI attaches the zip to it.
 
-## Unreleased
+## 1.6.0
 
 - **Self-exclusion, a cooldown screen, and limits that lock.** Three switches, all
   off until you turn them on, and the first time this extension does anything
