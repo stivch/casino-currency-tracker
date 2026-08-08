@@ -1,4 +1,4 @@
-// Build the store-ready zip. Run with: node tools/package.mjs
+// Build the release zip. Run with: node tools/package.mjs
 //
 // No dependencies, which is the same property the extension itself has: the
 // zip format is simple enough that writing it here beats requiring everyone

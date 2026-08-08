@@ -84,8 +84,8 @@ if you disagree.
   that refusal is pinned in the tests. Keep it that way.
 - **New request-originating features stay off by default.** Gated on the tab being open, visible,
   and focused, and rate-floored. That is both the privacy posture and the legal one.
-- **No casino branding.** No logos, wordmarks, or brand assets in icons, screenshots, or the
-  store listing. Icons are drawn in code.
+- **No casino branding.** No logos, wordmarks, or brand assets in icons, screenshots, or
+  release material. Icons are drawn in code.
 - **No bundled dependencies.** If a change needs a library, it probably needs a different design.
 
 ## Reporting bugs

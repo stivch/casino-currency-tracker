@@ -19,8 +19,14 @@ key, no build step.
 3. **Load unpacked** → select this folder
 4. Open Stake or Duel. A small readout appears in the bottom-right corner.
 
-Chrome 111 or newer. Releases are also attached as a zip to each
-[tagged release](https://github.com/stivch/casino-currency-tracker/releases).
+Chrome 111 or newer. A packaged zip is attached to each
+[tagged release](https://github.com/stivch/casino-currency-tracker/releases) if you would rather
+not clone.
+
+**It is not on the Chrome Web Store, and there are no plans to put it there.** This repository
+and its releases are the distribution. One consequence worth knowing: Chrome nags about
+developer-mode extensions on startup, which is its blanket warning for anything loaded unpacked
+rather than anything specific to this one.
 
 ## What it does
 
